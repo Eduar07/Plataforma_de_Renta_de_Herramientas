@@ -1,8 +1,13 @@
 package com.rentaherramientas.domain.model.enums;
 
+/**
+ * Estados de un pago
+ */
 public enum EstadoPago {
     PENDIENTE,
-    COMPLETADO,
+    PROCESANDO,
+    EXITOSO,
     FALLIDO,
-    REEMBOLSADO
+    REEMBOLSADO,
+    CANCELADO
 }

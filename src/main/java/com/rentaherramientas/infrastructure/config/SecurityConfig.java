@@ -1,9 +1,11 @@
 package com.rentaherramientas.infrastructure.config;
 
 import com.rentaherramientas.infrastructure.security.JwtAuthenticationFilter;
+import com.rentaherramientas.infrastructure.security.UserDetailsServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -13,7 +15,6 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -25,9 +26,8 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * ========================================
- * CONFIGURACIÓN DE SEGURIDAD
- * ========================================
+ * Configuración de Seguridad con Spring Security y JWT
+ * Incluye configuración de CORS para integración con Frontend
  */
 @Configuration
 @EnableWebSecurity
@@ -36,40 +36,43 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
-    private final UserDetailsService userDetailsService;
-    private final PasswordEncoder passwordEncoder; // INYECTADO desde BeanConfiguration
+    private final UserDetailsServiceImpl userDetailsService;
+    private final PasswordEncoder passwordEncoder;
 
-    /**
-     * Configuración de la cadena de filtros de seguridad
-     */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .csrf(AbstractHttpConfigurer::disable)
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            .sessionManagement(session -> 
+                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                // Endpoints públicos
-                .requestMatchers(
-                    "/api/auth/**",
-                    "/api/herramientas/disponibles",
-                    "/api/herramientas/categoria/**",
-                    "/swagger-ui/**",
-                    "/v3/api-docs/**",
-                    "/swagger-ui.html",
-                    "/**" // Permite acceso a frontend
-                ).permitAll()
+                // Rutas públicas
+                .requestMatchers("/", "/index.html", "/login.html", "/register.html").permitAll()
+                .requestMatchers("/css/**", "/js/**", "/images/**", "/assets/**").permitAll()
+                .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                .requestMatchers("/actuator/**").permitAll()
                 
-                // Endpoints de administrador
-                .requestMatchers("/api/usuarios/**").hasRole("ADMIN")
+                // Rutas públicas de consulta
+                .requestMatchers(HttpMethod.GET, "/api/herramientas/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/categorias/**").permitAll()
                 
-                // Endpoints de proveedor
-                .requestMatchers("/api/herramientas/proveedor/**").hasAnyRole("ADMIN", "PROVEEDOR")
+                // Rutas de Admin
+                .requestMatchers("/api/admin/**", "/admin.html").hasRole("ADMIN")
                 
-                // Resto de endpoints requieren autenticación
+                // Rutas de Proveedor
+                .requestMatchers("/api/proveedor/**").hasRole("PROVEEDOR")
+                
+                // Rutas de Cliente
+                .requestMatchers("/api/cliente/**").hasRole("CLIENTE")
+                
+                // Rutas protegidas generales
+                .requestMatchers("/dashboard.html", "/herramientas.html").authenticated()
+                .requestMatchers("/api/reservas/**", "/api/pagos/**", "/api/facturas/**").authenticated()
+                
+                // Todas las demás requieren autenticación
                 .anyRequest().authenticated()
-            )
-            .sessionManagement(session -> session
-                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
             .authenticationProvider(authenticationProvider())
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
@@ -77,44 +80,40 @@ public class SecurityConfig {
         return http.build();
     }
 
-    /**
-     * Proveedor de autenticación
-     */
-    @Bean
-    public AuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
-        authProvider.setUserDetailsService(userDetailsService);
-        authProvider.setPasswordEncoder(passwordEncoder); // Usa el inyectado
-        return authProvider;
-    }
-
-    /**
-     * Administrador de autenticación
-     */
-    @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
-        return config.getAuthenticationManager();
-    }
-
-    /**
-     * Configuración de CORS
-     */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:3000", "http://localhost:8080"));
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(Arrays.asList("*"));
+        configuration.setAllowedOrigins(Arrays.asList(
+            "http://localhost:8080",
+            "http://127.0.0.1:8080"
+        ));
+        configuration.setAllowedMethods(Arrays.asList(
+            "GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"
+        ));
+        configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
-        
+        configuration.setMaxAge(3600L);
+        configuration.setExposedHeaders(Arrays.asList(
+            "Authorization",
+            "Content-Type",
+            "X-Total-Count"
+        ));
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
     }
-    
-    // ❌ ELIMINAR ESTE MÉTODO (ya está en BeanConfiguration)
-    // @Bean
-    // public PasswordEncoder passwordEncoder() {
-    //     return new BCryptPasswordEncoder(10);
-    // }
+
+    @Bean
+    public AuthenticationProvider authenticationProvider() {
+        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
+        authProvider.setUserDetailsService(userDetailsService);
+        authProvider.setPasswordEncoder(passwordEncoder);
+        return authProvider;
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+        return config.getAuthenticationManager();
+    }
 }

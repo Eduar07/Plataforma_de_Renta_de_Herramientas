@@ -1,12 +1,14 @@
 package com.rentaherramientas.domain.exceptions;
 
+/**
+ * Excepción para violaciones de reglas de negocio
+ */
 public class BusinessException extends DomainException {
-    private static final long serialVersionUID = 1L;
-
+    
     public BusinessException(String message) {
         super(message);
     }
-
+    
     public BusinessException(String message, Throwable cause) {
         super(message, cause);
     }

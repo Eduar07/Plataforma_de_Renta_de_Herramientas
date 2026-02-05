@@ -1,6 +1,10 @@
 package com.rentaherramientas.domain.model.enums;
 
+/**
+ * Estados de una herramienta
+ */
 public enum EstadoHerramienta {
-    DISPONIBLE
-
+    ACTIVO,
+    PAUSADO,
+    ELIMINADO
 }
