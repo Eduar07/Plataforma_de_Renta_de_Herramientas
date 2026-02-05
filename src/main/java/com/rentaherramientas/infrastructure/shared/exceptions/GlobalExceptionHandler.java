@@ -56,8 +56,11 @@ public class GlobalExceptionHandler {
         
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.error("Errores de validación", errors));
-    }
+                .body(ApiResponse.<Map<String, String>>error(
+                        "Errores de validación",
+                        errors.toString()
+                ));
+        }
     
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ApiResponse<Void>> handleBadCredentials(BadCredentialsException ex) {
