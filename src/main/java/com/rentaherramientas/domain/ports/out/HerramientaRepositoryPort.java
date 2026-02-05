@@ -1,15 +1,33 @@
 package com.rentaherramientas.domain.ports.out;
 
 import com.rentaherramientas.domain.model.Herramienta;
+import com.rentaherramientas.domain.model.enums.EstadoHerramienta;
+
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Puerto de salida para persistencia de Herramienta
+ */
 public interface HerramientaRepositoryPort {
+    
     Herramienta save(Herramienta herramienta);
-    Optional<Herramienta> findById(Long id);
+    
+    Optional<Herramienta> findById(String id);
+    
+    Optional<Herramienta> findBySku(String sku);
+    
     List<Herramienta> findAll();
-    List<Herramienta> findByCategoria(String categoria);
-    List<Herramienta> findByProveedorId(Long proveedorId);
-    List<Herramienta> findByEstado(String estado);
-    void deleteById(Long id);
+    
+    List<Herramienta> findByProveedorId(String proveedorId);
+    
+    List<Herramienta> findByCategoriaId(String categoriaId);
+    
+    List<Herramienta> findByEstado(EstadoHerramienta estado);
+    
+    List<Herramienta> searchByNombreOrMarcaOrModelo(String termino);
+    
+    void deleteById(String id);
+    
+    boolean existsBySku(String sku);
 }
