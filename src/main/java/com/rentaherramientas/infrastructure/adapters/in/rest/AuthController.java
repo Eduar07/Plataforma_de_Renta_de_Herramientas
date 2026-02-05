@@ -6,7 +6,7 @@ import com.rentaherramientas.application.dto.response.ApiResponse;
 import com.rentaherramientas.application.dto.response.AuthResponse;
 import com.rentaherramientas.application.dto.response.UsuarioResponse;
 import com.rentaherramientas.domain.model.Usuario;
-import com.rentaherramientas.domain.model.enums.EstadoUsuario;
+// import com.rentaherramientas.domain.model.enums.EstadoUsuario;
 import com.rentaherramientas.domain.model.enums.Rol;
 import com.rentaherramientas.domain.model.enums.TipoDocumento;
 import com.rentaherramientas.infrastructure.security.JwtTokenProvider;
