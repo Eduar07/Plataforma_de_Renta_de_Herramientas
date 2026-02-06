@@ -8,7 +8,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.GenericGenerator;
+// import org.hibernate.annotations.GenericGenerator;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
@@ -28,8 +28,7 @@ import java.time.LocalDateTime;
 public class PagoEntity {
     
     @Id
-    @GeneratedValue(generator = "UUID")
-    @GenericGenerator(name = "UUID", strategy = "org.hibernate.id.UUIDGenerator")
+    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "id", length = 36, updatable = false, nullable = false)
     private String id;
     
@@ -56,6 +55,7 @@ public class PagoEntity {
     @Column(name = "metodo", nullable = false)
     private MetodoPago metodo;
     
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "estado")
     private EstadoPago estado = EstadoPago.PENDIENTE;
