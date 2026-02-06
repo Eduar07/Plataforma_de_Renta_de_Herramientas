@@ -109,7 +109,6 @@ public class ReservaService implements ReservaUseCase {
         EstadoReserva estadoEnum = EstadoReserva.valueOf(nuevoEstado);
         reserva.setEstado(estadoEnum);
         
-        // Actualizar timestamps según el estado
         switch (estadoEnum) {
             case PAGADA -> reserva.setFechaPago(LocalDateTime.now());
             case CONFIRMADA -> reserva.setFechaConfirmacion(LocalDateTime.now());
@@ -117,7 +116,11 @@ public class ReservaService implements ReservaUseCase {
             case ENTREGADA -> reserva.setFechaEntrega(LocalDateTime.now());
             case DEVUELTA -> reserva.setFechaDevolucionReal(LocalDateTime.now());
             case COMPLETADA -> reserva.setFechaCompletada(LocalDateTime.now());
-        }
+            default -> {
+                // Estados que no requieren timestamp
+            }
+}
+
         
         return reservaRepository.save(reserva);
     }
