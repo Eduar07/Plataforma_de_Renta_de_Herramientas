@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registrarse - RentaHerramientas</title>
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/reset.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/pages.css">
+</head>
+<body>
+    <div class="login-container">
+        <!-- LEFT SIDE -->
+        <div class="login-left">
+            <div class="login-left-content">
+                <h1>🔨 Únete a nosotros</h1>
+                <p>Crea tu cuenta y comienza a rentar las mejores herramientas o conviértete en proveedor.</p>
+            </div>
+        </div>
+
+        <!-- RIGHT SIDE -->
+        <div class="login-right">
+            <div class="login-card">
+                <h2>Crear Cuenta</h2>
+                <p>Completa el formulario para registrarte</p>
+
+                <div id="alertContainer"></div>
+
+                <form id="registerForm" class="login-form">
+                    <!-- Tipo de Usuario -->
+                    <div class="form-group">
+                        <label class="form-label form-label-required">Tipo de Usuario</label>
+                        <select id="tipo" class="form-control" required>
+                            <option value="">Selecciona...</option>
+                            <option value="CLIENTE">Cliente (Rentar herramientas)</option>
+                            <option value="PROVEEDOR">Proveedor (Ofrecer herramientas)</option>
+                        </select>
+                    </div>
+
+                    <!-- Email y Contraseña -->
+                    <div class="form-group">
+                        <label class="form-label form-label-required">Email</label>
+                        <input type="email" id="email" class="form-control" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label form-label-required">Contraseña</label>
+                        <input type="password" id="password" class="form-control" required minlength="6">
+                        <span class="form-text">Mínimo 6 caracteres</span>
+                    </div>
+
+                    <!-- Nombre y Apellido -->
+                    <div class="form-group">
+                        <label class="form-label form-label-required">Nombre</label>
+                        <input type="text" id="nombre" class="form-control" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label form-label-required">Apellido</label>
+                        <input type="text" id="apellido" class="form-control" required>
+                    </div>
+
+                    <!-- Teléfono -->
+                    <div class="form-group">
+                        <label class="form-label form-label-required">Teléfono</label>
+                        <input type="tel" id="telefono" class="form-control" required>
+                    </div>
+
+                    <!-- Documento -->
+                    <div class="form-group">
+                        <label class="form-label form-label-required">Tipo de Documento</label>
+                        <select id="documentoTipo" class="form-control" required>
+                            <option value="">Selecciona...</option>
+                            <option value="CC">Cédula de Ciudadanía</option>
+                            <option value="NIT">NIT</option>
+                            <option value="CE">Cédula de Extranjería</option>
+                            <option value="PASAPORTE">Pasaporte</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label form-label-required">Número de Documento</label>
+                        <input type="text" id="documentoNumero" class="form-control" required>
+                    </div>
+
+                    <!-- Dirección Opcional -->
+                    <div class="form-group">
+                        <label class="form-label">Dirección</label>
+                        <input type="text" id="direccion" class="form-control">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Ciudad</label>
+                        <input type="text" id="ciudad" class="form-control">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Departamento</label>
+                        <input type="text" id="departamento" class="form-control">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-block btn-lg" id="registerBtn">
+                        Crear Cuenta
+                    </button>
+                </form>
+
+                <div class="login-footer">
+                    <p>¿Ya tienes cuenta? <a href="/login.html">Inicia sesión aquí</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/auth.js"></script>
+</body>
+</html>
