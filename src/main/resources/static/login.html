@@ -4,48 +4,36 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Iniciar Sesión - RentaHerramientas</title>
-    <link rel="stylesheet" href="/src/main/resources/static/css/variables.css">
-    <link rel="stylesheet" href="/src/main/resources/static/css/reset.css">
-    <link rel="stylesheet" href="/src/main/resources/static/css/components.css">
-    <link rel="stylesheet" href="/src/main/resources/static/css/pages.css">
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/responsive.css">
 </head>
 <body>
-    <div class="login-container">
-        <!-- LEFT SIDE -->
-        <div class="login-left">
-            <div class="login-left-content">
+    <div class="auth-container">
+        <!-- Lado Izquierdo -->
+        <div class="auth-left">
+            <div class="auth-left-content">
                 <h1>🔨 Bienvenido de vuelta</h1>
                 <p>Accede a tu cuenta para gestionar tus herramientas, reservas y más.</p>
             </div>
         </div>
 
-        <!-- RIGHT SIDE -->
-        <div class="login-right">
-            <div class="login-card">
-                <h2>Iniciar Sesión</h2>
-                <p>Ingresa tus credenciales para continuar</p>
+        <!-- Lado Derecho -->
+        <div class="auth-right">
+            <div class="auth-box">
+                <h2 class="auth-title">Iniciar Sesión</h2>
+                <p class="auth-subtitle">Ingresa tus credenciales</p>
 
                 <div id="alertContainer"></div>
 
-                <form id="loginForm" class="login-form">
+                <form id="loginForm" class="auth-form">
                     <div class="form-group">
-                        <label class="form-label form-label-required">Email</label>
-                        <input 
-                            type="email" 
-                            id="email" 
-                            class="form-control" 
-                            placeholder="tu@email.com"
-                            required>
+                        <label class="form-label">Email</label>
+                        <input type="email" id="email" class="form-control" required placeholder="tu@email.com">
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label form-label-required">Contraseña</label>
-                        <input 
-                            type="password" 
-                            id="password" 
-                            class="form-control" 
-                            placeholder="••••••••"
-                            required>
+                        <label class="form-label">Contraseña</label>
+                        <input type="password" id="password" class="form-control" required placeholder="••••••••">
                     </div>
 
                     <button type="submit" class="btn btn-primary btn-block btn-lg" id="loginBtn">
@@ -53,13 +41,14 @@
                     </button>
                 </form>
 
-                <div class="login-footer">
-                    <p>¿No tienes cuenta? <a href="/src/main/resources/static/register.html">Regístrate aquí</a></p>
+                <div class="auth-footer">
+                    <p>¿No tienes cuenta? <a href="/registro.html">Regístrate aquí</a></p>
                 </div>
             </div>
         </div>
     </div>
 
-    <script src="/src/main/resources/static/js/auth.js"></script>
+    <script src="/js/api.js"></script>
+    <script src="/js/auth.js"></script>
 </body>
 </html>

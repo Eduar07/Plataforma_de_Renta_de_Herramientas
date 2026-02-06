@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Cuenta - RentaHerramientas</title>
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/responsive.css">
+</head>
+<body>
+    <!-- HEADER -->
+    <header class="header">
+        <div style="display: flex; align-items: center; gap: 20px;">
+            <button class="menu-toggle" onclick="toggleSidebar()" style="display: none;">☰</button>
+            <a href="/cliente.html" class="header-logo">
+                <span class="header-logo-icon">🔨</span>
+                <span>RentaHerramientas</span>
+            </a>
+        </div>
+        <div class="header-user" onclick="toggleUserMenu()">
+            <div class="header-user-avatar" id="userAvatar" style="background-color: #28A745;">C</div>
+            <div class="header-user-info">
+                <div class="header-user-name" id="userName">Cliente</div>
+                <div class="header-user-role">Cliente</div>
+            </div>
+            <span>▼</span>
+        </div>
+    </header>
+
+    <div class="dashboard-layout">
+        <!-- SIDEBAR -->
+        <aside class="sidebar" id="sidebar">
+            <ul class="sidebar-menu">
+                <li class="sidebar-item">
+                    <a href="#" class="sidebar-link active" onclick="cambiarVista('explorar')">
+                        <span class="sidebar-icon">🔍</span>
+                        <span>Explorar</span>
+                    </a>
+                </li>
+                <li class="sidebar-item">
+                    <a href="#" class="sidebar-link" onclick="cambiarVista('misReservas')">
+                        <span class="sidebar-icon">📋</span>
+                        <span>Mis Reservas</span>
+                    </a>
+                </li>
+                <li class="sidebar-item">
+                    <a href="#" class="sidebar-link" onclick="cambiarVista('favoritos')">
+                        <span class="sidebar-icon">❤️</span>
+                        <span>Favoritos</span>
+                    </a>
+                </li>
+                <li class="sidebar-item">
+                    <a href="#" class="sidebar-link" onclick="cambiarVista('perfil')">
+                        <span class="sidebar-icon">👤</span>
+                        <span>Mi Perfil</span>
+                    </a>
+                </li>
+                <li class="sidebar-item">
+                    <a href="#" class="sidebar-link" onclick="cerrarSesion()">
+                        <span class="sidebar-icon">🚪</span>
+                        <span>Salir</span>
+                    </a>
+                </li>
+            </ul>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="main-content" id="mainContent">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p class="loading-text">Cargando...</p>
+            </div>
+        </main>
+    </div>
+
+    <script src="/js/api.js"></script>
+    <script src="/js/cliente-dashboard.js"></script>
+</body>
+</html>

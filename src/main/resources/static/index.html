@@ -3,39 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Renta Herramientas - Encuentra la herramienta perfecta</title>
-    <link rel="stylesheet" href="/src/main/resources/static/css/variables.css">
-    <link rel="stylesheet" href="/src/main/resources/static/css/reset.css">
-    <link rel="stylesheet" href="/src/main/resources/static/css/components.css">
-    <link rel="stylesheet" href="/src/main/resources/static/css/pages.css">
+    <title>RentaHerramientas - Alquiler de Herramientas</title>
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="/css/responsive.css">
 </head>
 <body>
     <!-- HEADER -->
     <header class="header">
-        <div class="header-left">
-            <div class="header-logo">
-                <span>🔨</span>
-                <span>RentaHerramientas</span>
-            </div>
-            <nav class="header-nav">
-                <a href="/src/main/resources/static/index.html" class="header-nav-link active">Inicio</a>
-                <a href="/src/main/resources/static/herramientas.html" class="header-nav-link">Explorar</a>
-            </nav>
-        </div>
-        <div class="header-right">
-            <a href="/src/main/resources/static/login.html" class="btn btn-outline-primary">Iniciar Sesión</a>
-            <a href="/src/main/resources/static/register.html" class="btn btn-primary">Registrarse</a>
+        <a href="/index.html" class="header-logo">
+            <span class="header-logo-icon">🔨</span>
+            <span>RentaHerramientas</span>
+        </a>
+        <nav class="header-nav">
+            <a href="/index.html">Inicio</a>
+            <a href="#explorar">Explorar</a>
+        </nav>
+        <div style="display: flex; gap: 12px;">
+            <a href="/login.html" class="btn btn-outline">Iniciar Sesión</a>
+            <a href="/registro.html" class="btn btn-primary">Registrarse</a>
         </div>
     </header>
 
     <!-- HERO SECTION -->
-    <section class="hero-section" style="margin-top: 60px;">
-        <div class="hero-content">
+    <section class="hero">
+        <div class="container">
             <h1 class="hero-title">🔨 Encuentra la herramienta perfecta</h1>
             <p class="hero-subtitle">para tu próximo proyecto</p>
             <div class="hero-search">
-                <input type="text" id="heroSearchInput" placeholder="Buscar por nombre, marca o categoría...">
-                <button class="btn btn-primary btn-lg" onclick="searchHerramientas()">
+                <input type="text" id="heroSearchInput" placeholder="Buscar herramientas...">
+                <button class="btn btn-primary btn-lg" onclick="buscarHerramientas()">
                     🔍 Buscar
                 </button>
             </div>
@@ -44,25 +40,146 @@
 
     <!-- CATEGORÍAS -->
     <section class="categories-section">
-        <h2 class="section-title">🏷️ Categorías Populares</h2>
-        <div class="categories-grid" id="categoriesGrid">
-            <!-- Se llenan dinámicamente -->
+        <div class="container">
+            <h2 class="section-title">🏷️ Categorías Populares</h2>
+            <div class="categories-grid">
+                <div class="category-card" onclick="irACategoria('construccion')">
+                    <div class="category-icon">🔨</div>
+                    <div class="category-name">Construcción</div>
+                </div>
+                <div class="category-card" onclick="irACategoria('carpinteria')">
+                    <div class="category-icon">🪛</div>
+                    <div class="category-name">Carpintería</div>
+                </div>
+                <div class="category-card" onclick="irACategoria('jardineria')">
+                    <div class="category-icon">🌿</div>
+                    <div class="category-name">Jardinería</div>
+                </div>
+                <div class="category-card" onclick="irACategoria('electricidad')">
+                    <div class="category-icon">⚡</div>
+                    <div class="category-name">Electricidad</div>
+                </div>
+                <div class="category-card" onclick="irACategoria('pintura')">
+                    <div class="category-icon">🎨</div>
+                    <div class="category-name">Pintura</div>
+                </div>
+            </div>
         </div>
     </section>
 
     <!-- HERRAMIENTAS DESTACADAS -->
-    <section class="categories-section">
-        <h2 class="section-title">⭐ Herramientas Destacadas</h2>
-        <div class="herramientas-grid" id="herramientasGrid">
-            <!-- Se llenan dinámicamente -->
+    <section class="categories-section" style="background-color: #f8f9fa;">
+        <div class="container">
+            <h2 class="section-title">⭐ Herramientas Destacadas</h2>
+            <div class="herramientas-grid" id="herramientasDestacadas">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p class="loading-text">Cargando herramientas...</p>
+                </div>
+            </div>
         </div>
     </section>
 
     <!-- FOOTER -->
-    <footer style="background-color: var(--color-gray-800); color: var(--color-white); padding: var(--spacing-2xl); text-align: center;">
-        <p>&copy; 2025 RentaHerramientas. Todos los derechos reservados.</p>
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 RentaHerramientas. Todos los derechos reservados.</p>
+        </div>
     </footer>
 
-    <script src="/src/main/resources/static/js/index.js"></script>
-</body>
-</html>
+    <script src="/js/api.js"></script>
+    <script>
+        // Cargar herramientas destacadas al iniciar
+        document.addEventListener('DOMContentLoaded', cargarHerramientasDestacadas);
+
+        async function cargarHerramientasDestacadas() {
+            try {
+                const herramientas = await api.get('/herramientas');
+                const container = document.getElementById('herramientasDestacadas');
+                
+                if (herramientas.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state" style="grid-column: 1/-1;">
+                            <div class="empty-state-icon">🔍</div>
+                            <div class="empty-state-title">No hay herramientas disponibles</div>
+                            <div class="empty-state-text">Pronto habrá nuevas herramientas</div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Mostrar solo las primeras 6
+                const destacadas = herramientas.slice(0, 6);
+                container.innerHTML = destacadas.map(h => crearCardHerramienta(h)).join('');
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('herramientasDestacadas').innerHTML = `
+                    <div class="alert alert-danger" style="grid-column: 1/-1;">
+                        Error al cargar herramientas
+                    </div>
+                `;
+            }
+        }
+
+        function crearCardHerramienta(h) {
+            const imagen = h.fotos && h.fotos.length > 0 ? h.fotos[0] : 'https://via.placeholder.com/300x200?text=Sin+Imagen';
+            return `
+                <div class="herramienta-card" onclick="verHerramienta('${h.id}')">
+                    <img src="${imagen}" alt="${h.nombre}" class="herramienta-image" 
+                         onerror="this.src='https://via.placeholder.com/300x200?text=Sin+Imagen'">
+                    <div class="herramienta-body">
+                        <div class="herramienta-title">${h.nombre}</div>
+                        <div class="herramienta-brand">${h.marca || ''} ${h.modelo || ''}</div>
+                        <div class="herramienta-price">
+                            ${formatearMoneda(h.precioBaseDia)}
+                            <span class="herramienta-price-label">/día</span>
+                        </div>
+                        <div class="herramienta-rating">
+                            <span>⭐</span>
+                            <span>${h.calificacionPromedio || 0} (${h.totalCalificaciones || 0})</span>
+                        </div>
+                    </div>
+                    <div class="herramienta-footer">
+                        <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); verHerramienta('${h.id}')">
+                            Ver Detalles
+                        </button>
+                        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); reservar('${h.id}')">
+                            Reservar
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function formatearMoneda(monto) {
+            return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(monto);
+        }
+
+        function buscarHerramientas() {
+            const termino = document.getElementById('heroSearchInput').value;
+            if (termino.trim()) {
+                alert('Búsqueda: ' + termino);
+            }
+        }
+
+        function irACategoria(categoria) {
+            alert('Categoría: ' + categoria);
+        }
+
+        function verHerramienta(id) {
+            if (!localStorage.getItem('token')) {
+                alert('Debes iniciar sesión');
+                window.location.href = '/login.html';
+            } else {
+                alert('Ver herramienta: ' + id);
+            }
+        }
+
+        function reservar(id) {
+            if (!localStorage.getItem('token')) {
+                alert('Debes iniciar sesión para reservar');
+                window.location.href = '/login.html';
+            } else {
+                alert('Reservar herramienta: ' + id);
+            }
+        }

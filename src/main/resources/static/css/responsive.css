@@ -1,0 +1,147 @@
+/* ========================================
+   RESPONSIVE DESIGN
+   ======================================== */
+
+/* Tablet (máx 992px) */
+@media (max-width: 992px) {
+    .sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        z-index: 1500;
+    }
+    
+    .sidebar.active {
+        transform: translateX(0);
+    }
+    
+    .main-content {
+        margin-left: 0;
+    }
+    
+    .header-nav {
+        display: none;
+    }
+    
+    .menu-toggle {
+        display: block;
+        background: none;
+        border: none;
+        font-size: 24px;
+        cursor: pointer;
+        padding: 8px;
+    }
+    
+    .kpi-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .herramientas-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* Mobile (máx 768px) */
+@media (max-width: 768px) {
+    .auth-container {
+        flex-direction: column;
+    }
+    
+    .auth-left {
+        padding: 40px 20px;
+    }
+    
+    .auth-left h1 {
+        font-size: 32px;
+    }
+    
+    .auth-left p {
+        font-size: 16px;
+    }
+    
+    .auth-right {
+        padding: 40px 20px;
+    }
+    
+    .hero-title {
+        font-size: 32px;
+    }
+    
+    .hero-subtitle {
+        font-size: 18px;
+    }
+    
+    .hero-search {
+        flex-direction: column;
+    }
+    
+    .kpi-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .herramientas-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .filters-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .table-container {
+        overflow-x: scroll;
+    }
+    
+    .main-content {
+        padding: 20px;
+    }
+    
+    .page-title {
+        font-size: 24px;
+    }
+    
+    .categories-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+    }
+}
+
+/* Mobile pequeño (máx 576px) */
+@media (max-width: 576px) {
+    .header {
+        padding: 0 15px;
+    }
+    
+    .header-logo {
+        font-size: 20px;
+    }
+    
+    .header-user-info {
+        display: none;
+    }
+    
+    .btn {
+        padding: 10px 20px;
+        font-size: 14px;
+    }
+    
+    .btn-lg {
+        padding: 14px 28px;
+        font-size: 16px;
+    }
+    
+    .kpi-value {
+        font-size: 28px;
+    }
+    
+    .modal-content {
+        width: 95%;
+    }
+    
+    .categories-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .tabs {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+    }
+}
