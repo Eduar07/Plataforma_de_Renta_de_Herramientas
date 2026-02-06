@@ -166,7 +166,7 @@ CREATE TABLE herramientas (
     precio_base_dia DECIMAL(12,2) NOT NULL CHECK (precio_base_dia > 0),
     envio_incluido BOOLEAN DEFAULT TRUE,
     dias_minimo_alquiler INT DEFAULT 1 CHECK (dias_minimo_alquiler > 0),
-    dias_maximo_alquiler INT DEFAULT 90 CHECK (dias_maximo_alquiler >= dias_minimo_alquiler),
+    dias_maximo_alquiler INT DEFAULT 90,
     deposito_seguridad DECIMAL(12,2) DEFAULT 0.00,
     estado ENUM('ACTIVO', 'PAUSADO', 'ELIMINADO') DEFAULT 'ACTIVO',
     calificacion_promedio DECIMAL(3,2) DEFAULT 0.00,
@@ -175,7 +175,11 @@ CREATE TABLE herramientas (
     vistas INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
+
+    -- ✅ CHECK a nivel de tabla
+    CONSTRAINT chk_dias_alquiler
+        CHECK (dias_maximo_alquiler >= dias_minimo_alquiler),
+
     FOREIGN KEY (proveedor_id) REFERENCES perfiles_proveedor(id) ON DELETE CASCADE,
     FOREIGN KEY (categoria_id) REFERENCES categorias(id),
     INDEX idx_proveedor (proveedor_id),

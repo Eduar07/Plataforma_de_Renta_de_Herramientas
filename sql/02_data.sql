@@ -86,7 +86,9 @@ INSERT INTO herramientas_instancia (id, herramienta_id, codigo_interno, estado, 
 -- ============================================
 -- 10. CONFIGURACIÓN DE LA PLATAFORMA
 -- ============================================
-INSERT INTO configuracion_plataforma (id, clave, valor, tipo_dato, descripcion, categoria) VALUES
+INSERT INTO configuracion_plataforma
+(id, clave, valor, tipo_dato, descripcion, categoria)
+VALUES
 (UUID(), 'comision_porcentaje', '10.0', 'NUMBER', 'Porcentaje de comisión que cobra la plataforma', 'FINANCIERO'),
 (UUID(), 'seguro_porcentaje', '5.0', 'NUMBER', 'Porcentaje del subtotal para el seguro', 'FINANCIERO'),
 (UUID(), 'mora_cargo_diario', '10000', 'NUMBER', 'Cargo por día de mora en pesos', 'FINANCIERO'),
@@ -94,7 +96,12 @@ INSERT INTO configuracion_plataforma (id, clave, valor, tipo_dato, descripcion, 
 (UUID(), 'retiro_minimo', '50000', 'NUMBER', 'Monto mínimo para solicitar retiro', 'FINANCIERO'),
 (UUID(), 'datacredito_dias_mora', '90', 'NUMBER', 'Días de mora antes de reportar a Datacrédito', 'FINANCIERO'),
 (UUID(), 'maximo_advertencias', '5', 'NUMBER', 'Máximo de advertencias antes de bloqueo', 'SEGURIDAD'),
-(UUID(), 'dias_cancelacion_sin_penalizacion', '2', 'NUMBER', 'Días antes de inicio para cancelar sin penalización', 'OPERACIONAL');
+(UUID(), 'dias_cancelacion_sin_penalizacion', '2', 'NUMBER', 'Días antes de inicio para cancelar sin penalización', 'OPERACIONAL')
+ON DUPLICATE KEY UPDATE
+    valor       = VALUES(valor),
+    tipo_dato   = VALUES(tipo_dato),
+    descripcion = VALUES(descripcion),
+    categoria   = VALUES(categoria);
 
 -- ============================================
 -- 11. FONDO DE SEGUROS
@@ -105,9 +112,14 @@ INSERT INTO fondo_seguros (id, balance_total, total_recaudado, total_pagado, seg
 -- ============================================
 -- 12. BILLETERAS DE PROVEEDORES
 -- ============================================
-INSERT INTO billetera_proveedor (id, proveedor_id, saldo_disponible, saldo_retenido) VALUES
+INSERT INTO billetera_proveedor
+(id, proveedor_id, saldo_disponible, saldo_retenido)
+VALUES
 (UUID(), '660e8400-e29b-41d4-a716-446655440001', 0.00, 0.00),
-(UUID(), '660e8400-e29b-41d4-a716-446655440002', 0.00, 0.00);
+(UUID(), '660e8400-e29b-41d4-a716-446655440002', 0.00, 0.00)
+ON DUPLICATE KEY UPDATE
+    saldo_disponible = VALUES(saldo_disponible),
+    saldo_retenido   = VALUES(saldo_retenido);
 
 -- ============================================
 -- 13. CUPONES DE DESCUENTO
