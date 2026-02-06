@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - RentaHerramientas</title>
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/reset.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/pages.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- HEADER -->
+        <header class="header">
+            <div class="header-left">
+                <button class="btn-icon" id="menuToggle">☰</button>
+                <div class="header-logo">
+                    <span>🔨</span>
+                    <span>RentaHerramientas</span>
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="header-user" id="userDropdownToggle">
+                    <div class="header-user-avatar" id="userAvatar">U</div>
+                    <div>
+                        <div class="header-user-name" id="userName">Usuario</div>
+                        <div style="font-size: var(--font-size-xs); color: var(--color-gray-600);" id="userRole">Rol</div>
+                    </div>
+                    <span>▼</span>
+                </div>
+                <div class="dropdown">
+                    <div class="dropdown-menu" id="userDropdown">
+                        <a href="#" class="dropdown-item" onclick="goToProfile()">👤 Mi Perfil</a>
+                        <div class="dropdown-divider"></div>
+                        <a href="#" class="dropdown-item" onclick="logout()">🚪 Cerrar Sesión</a>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- SIDEBAR -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-menu" id="sidebarMenu">
+                <!-- Se llena dinámicamente según el rol -->
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="main-content" id="mainContent">
+            <!-- Se llena dinámicamente según la vista -->
+        </main>
+    </div>
+
+    <script src="/js/config.js"></script>
+    <script src="/js/utils.js"></script>
+    <script src="/js/dashboard.js"></script>
+</body>
+</html>
