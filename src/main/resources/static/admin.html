@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - RentaHerramientas</title>
+    <link rel="stylesheet" href="/src/main/resources/static/css/variable.css">
+    <link rel="stylesheet" href="/src/main/resources/static/css/reset.css">
+    <link rel="stylesheet" href="/src/main/resources/static/css/components.css">
+    <link rel="stylesheet" href="/src/main/resources/static/css/pages.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- HEADER -->
+        <header class="header">
+            <div class="header-left">
+                <button class="btn-icon" id="menuToggle">☰</button>
+                <div class="header-logo">
+                    <span>🔨</span>
+                    <span>Admin Dashboard</span>
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="header-user" id="userDropdownToggle">
+                    <div class="header-user-avatar" style="background-color: var(--color-admin);">A</div>
+                    <div>
+                        <div class="header-user-name" id="userName">Administrador</div>
+                        <div style="font-size: var(--font-size-xs); color: var(--color-gray-600);">Admin</div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- SIDEBAR ADMIN -->
+        <aside class="sidebar admin" id="sidebar">
+            <div class="sidebar-menu">
+                <a href="#dashboard" class="sidebar-menu-item active" data-view="dashboard">
+                    <span class="sidebar-menu-icon">📊</span>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#usuarios" class="sidebar-menu-item" data-view="usuarios">
+                    <span class="sidebar-menu-icon">👥</span>
+                    <span>Usuarios</span>
+                </a>
+                <a href="#herramientas" class="sidebar-menu-item" data-view="herramientas">
+                    <span class="sidebar-menu-icon">🛠️</span>
+                    <span>Herramientas</span>
+                </a>
+                <a href="#reservas" class="sidebar-menu-item" data-view="reservas">
+                    <span class="sidebar-menu-icon">📋</span>
+                    <span>Reservas</span>
+                </a>
+                <a href="#pagos" class="sidebar-menu-item" data-view="pagos">
+                    <span class="sidebar-menu-icon">💰</span>
+                    <span>Pagos</span>
+                </a>
+                <a href="#configuracion" class="sidebar-menu-item" data-view="configuracion">
+                    <span class="sidebar-menu-icon">⚙️</span>
+                    <span>Configuración</span>
+                </a>
+                <a href="#" class="sidebar-menu-item" onclick="logout()">
+                    <span class="sidebar-menu-icon">🚪</span>
+                    <span>Salir</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="main-content" id="mainContent">
+            <!-- Dashboard View (Default) -->
+            <div id="dashboardView">
+                <div class="dashboard-header">
+                    <h1 class="dashboard-title">Dashboard Administrativo</h1>
+                    <p class="dashboard-subtitle">Vista general del sistema</p>
+                </div>
+
+                <!-- KPIs -->
+                <div class="kpi-grid">
+                    <div class="card card-kpi">
+                        <div class="card-kpi-label">Total Usuarios</div>
+                        <div class="card-kpi-value" id="kpiTotalUsuarios">0</div>
+                        <div class="card-kpi-change positive">↑ Clientes: <span id="kpiClientes">0</span></div>
+                        <div class="card-kpi-change positive">↑ Proveedores: <span id="kpiProveedores">0</span></div>
+                    </div>
+
+                    <div class="card card-kpi">
+                        <div class="card-kpi-label">Reservas Activas</div>
+                        <div class="card-kpi-value" id="kpiReservasActivas">0</div>
+                        <div class="card-kpi-change">Estado actual</div>
+                    </div>
+
+                    <div class="card card-kpi">
+                        <div class="card-kpi-label">Herramientas</div>
+                        <div class="card-kpi-value" id="kpiHerramientas">0</div>
+                        <div class="card-kpi-change positive">Activas en plataforma</div>
+                    </div>
+
+                    <div class="card card-kpi">
+                        <div class="card-kpi-label">Ingresos del Mes</div>
+                        <div class="card-kpi-value" id="kpiIngresos">$0</div>
+                        <div class="card-kpi-change positive">Comisiones</div>
+                    </div>
+                </div>
+
+                <!-- Alertas Prioritarias -->
+                <div class="dashboard-section">
+                    <div class="section-header">
+                        <h3>⚠️ Alertas Prioritarias</h3>
+                    </div>
+                    <div class="card">
+                        <div class="card-body">
+                            <div id="alertasContainer">
+                                <div class="empty-state">
+                                    <div class="empty-state-icon">✓</div>
+                                    <div class="empty-state-title">No hay alertas</div>
+                                    <div class="empty-state-text">Todo está funcionando correctamente</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Usuarios View -->
+            <div id="usuariosView" class="hidden">
+                <div class="dashboard-header">
+                    <h1 class="dashboard-title">Gestión de Usuarios</h1>
+                </div>
+
+                <!-- Filtros -->
+                <div class="filters-container">
+                    <div class="filters-row">
+                        <div class="form-group">
+                            <input type="text" class="form-control" id="searchUsuarios" placeholder="Buscar por email, nombre...">
+                        </div>
+                        <div class="form-group">
+                            <select class="form-control" id="filterTipo">
+                                <option value="">Todos los tipos</option>
+                                <option value="CLIENTE">Cliente</option>
+                                <option value="PROVEEDOR">Proveedor</option>
+                                <option value="ADMIN">Admin</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <select class="form-control" id="filterEstado">
+                                <option value="">Todos los estados</option>
+                                <option value="ACTIVO">Activo</option>
+                                <option value="BLOQUEADO">Bloqueado</option>
+                                <option value="SUSPENDIDO">Suspendido</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="filters-actions">
+                        <button class="btn btn-primary" onclick="buscarUsuarios()">🔍 Buscar</button>
+                        <button class="btn btn-secondary" onclick="limpiarFiltrosUsuarios()">✖️ Limpiar</button>
+                    </div>
+                </div>
+
+                <!-- Tabla -->
+                <div class="card">
+                    <div class="table-container">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Email</th>
+                                    <th>Nombre</th>
+                                    <th>Tipo</th>
+                                    <th>Estado</th>
+                                    <th>Score</th>
+                                    <th>Advertencias</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usuariosTableBody">
+                                <tr>
+                                    <td colspan="7" class="text-center">Cargando...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Paginación -->
+                <div class="pagination" id="usuariosPagination"></div>
+            </div>
+
+            <!-- Herramientas View -->
+            <div id="herramientasView" class="hidden">
+                <div class="dashboard-header">
+                    <h1 class="dashboard-title">Gestión de Herramientas</h1>
+                </div>
+
+                <!-- Filtros -->
+                <div class="filters-container">
+                    <div class="filters-row">
+                        <div class="form-group">
+                            <input type="text" class="form-control" id="searchHerramientas" placeholder="Buscar herramientas...">
+                        </div>
+                        <div class="form-group">
+                            <select class="form-control" id="filterEstadoHerramienta">
+                                <option value="">Todos los estados</option>
+                                <option value="ACTIVO">Activo</option>
+                                <option value="PAUSADO">Pausado</option>
+                                <option value="ELIMINADO">Eliminado</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="filters-actions">
+                        <button class="btn btn-primary" onclick="buscarHerramientas()">🔍 Buscar</button>
+                    </div>
+                </div>
+
+                <!-- Grid -->
+                <div class="herramientas-grid" id="herramientasAdminGrid">
+                    <!-- Se llena dinámicamente -->
+                </div>
+            </div>
+
+            <!-- Reservas View -->
+            <div id="reservasView" class="hidden">
+                <div class="dashboard-header">
+                    <h1 class="dashboard-title">Gestión de Reservas</h1>
+                </div>
+
+                <!-- Tabs por Estado -->
+                <div class="tabs">
+                    <div class="tab active" data-tab="todas">Todas</div>
+                    <div class="tab" data-tab="pendientes">Pendientes</div>
+                    <div class="tab" data-tab="activas">Activas</div>
+                    <div class="tab" data-tab="completadas">Completadas</div>
+                    <div class="tab" data-tab="mora">⚠️ Mora</div>
+                </div>
+
+                <!-- Contenido -->
+                <div class="card">
+                    <div class="table-container">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>#Reserva</th>
+                                    <th>Cliente</th>
+                                    <th>Herramienta</th>
+                                    <th>Fechas</th>
+                                    <th>Estado</th>
+                                    <th>Total</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="reservasTableBody">
+                                <tr>
+                                    <td colspan="7" class="text-center">Cargando...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pagos View -->
+            <div id="pagosView" class="hidden">
+                <div class="dashboard-header">
+                    <h1 class="dashboard-title">Gestión de Pagos</h1>
+                </div>
+
+                <div class="card">
+                    <div class="table-container">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>#Transacción</th>
+                                    <th>Cliente</th>
+                                    <th>Monto</th>
+                                    <th>Método</th>
+                                    <th>Estado</th>
+                                    <th>Fecha</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pagosTableBody">
+                                <tr>
+                                    <td colspan="7" class="text-center">Cargando...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Configuración View -->
+            <div id="configuracionView" class="hidden">
+                <div class="dashboard-header">
+                    <h1 class="dashboard-title">Configuración del Sistema</h1>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3>⚙️ Parámetros de la Plataforma</h3>
+                    </div>
+                    <div class="card-body">
+                        <form id="configForm">
+                            <div class="form-group">
+                                <label class="form-label">Comisión Plataforma (%)</label>
+                                <input type="number" class="form-control" id="comisionPorcentaje" value="10" step="0.1">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Seguro (%)</label>
+                                <input type="number" class="form-control" id="seguroPorcentaje" value="5" step="0.1">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Cargo por Día de Mora ($)</label>
+                                <input type="number" class="form-control" id="moraCargoDiario" value="10000">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Días para Cancelación sin Penalización</label>
+                                <input type="number" class="form-control" id="diasCancelacion" value="2">
+                            </div>
+                            <button type="submit" class="btn btn-primary">💾 Guardar Cambios</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal Usuario Detalle -->
+    <div class="modal" id="usuarioModal">
+        <div class="modal-backdrop" onclick="closeModal('usuarioModal')"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Detalle de Usuario</h3>
+                <button class="modal-close" onclick="closeModal('usuarioModal')">✖</button>
+            </div>
+            <div class="modal-body" id="usuarioModalBody">
+                <!-- Se llena dinámicamente -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('usuarioModal')">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/src/main/resources/static/js/config.js"></script>
+    <script src="/src/main/resources/static/js/utils.js"></script>
+    <script src="/src/main/resources/static/js/admin.js"></script>
+</body>
+</html>
