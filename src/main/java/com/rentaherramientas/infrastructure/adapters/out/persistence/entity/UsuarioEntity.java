@@ -8,7 +8,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.GenericGenerator;
+// import org.hibernate.annotations.GenericGenerator;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -28,8 +28,7 @@ import java.time.LocalDateTime;
 public class UsuarioEntity {
     
     @Id
-    @GeneratedValue(generator = "UUID")
-    @GenericGenerator(name = "UUID", strategy = "org.hibernate.id.UUIDGenerator")
+    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "id", length = 36, updatable = false, nullable = false)
     private String id;
     
@@ -68,9 +67,11 @@ public class UsuarioEntity {
     @Column(name = "documento_numero", nullable = false, unique = true, length = 50)
     private String documentoNumero;
     
+    @Builder.Default
     @Column(name = "score")
     private Integer score = 100;
     
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "estado")
     private EstadoUsuario estado = EstadoUsuario.ACTIVO;
@@ -78,15 +79,18 @@ public class UsuarioEntity {
     @Column(name = "razon_bloqueo", columnDefinition = "TEXT")
     private String razonBloqueo;
     
+    @Builder.Default
     @Column(name = "advertencias")
     private Integer advertencias = 0;
     
+    @Builder.Default
     @Column(name = "fecha_registro")
     private LocalDateTime fechaRegistro = LocalDateTime.now();
     
+    @Builder.Default
     @Column(name = "ultima_actividad")
     private LocalDateTime ultimaActividad = LocalDateTime.now();
-    
+        
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

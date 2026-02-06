@@ -6,7 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.GenericGenerator;
+// import org.hibernate.annotations.GenericGenerator;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
@@ -27,8 +27,7 @@ import java.time.LocalDateTime;
 public class FacturaEntity {
     
     @Id
-    @GeneratedValue(generator = "UUID")
-    @GenericGenerator(name = "UUID", strategy = "org.hibernate.id.UUIDGenerator")
+    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "id", length = 36, updatable = false, nullable = false)
     private String id;
     
@@ -65,9 +64,11 @@ public class FacturaEntity {
     @Column(name = "subtotal", nullable = false, precision = 12, scale = 2)
     private BigDecimal subtotal;
     
+    @Builder.Default
     @Column(name = "descuentos", precision = 12, scale = 2)
     private BigDecimal descuentos = BigDecimal.ZERO;
-    
+
+    @Builder.Default
     @Column(name = "impuestos", precision = 12, scale = 2)
     private BigDecimal impuestos = BigDecimal.ZERO;
     
@@ -80,6 +81,7 @@ public class FacturaEntity {
     @Column(name = "fecha_vencimiento")
     private LocalDate fechaVencimiento;
     
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "estado")
     private EstadoFactura estado = EstadoFactura.EMITIDA;

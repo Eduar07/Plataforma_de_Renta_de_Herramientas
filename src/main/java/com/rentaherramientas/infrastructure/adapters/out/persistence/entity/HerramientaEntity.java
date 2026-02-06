@@ -6,7 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.GenericGenerator;
+// import org.hibernate.annotations.GenericGenerator;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import org.springframework.data.annotation.CreatedDate;
@@ -30,8 +30,7 @@ import java.util.List;
 public class HerramientaEntity {
     
     @Id
-    @GeneratedValue(generator = "UUID")
-    @GenericGenerator(name = "UUID", strategy = "org.hibernate.id.UUIDGenerator")
+    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "id", length = 36, updatable = false, nullable = false)
     private String id;
     
@@ -63,31 +62,40 @@ public class HerramientaEntity {
     @Column(name = "precio_base_dia", nullable = false, precision = 12, scale = 2)
     private BigDecimal precioBaseDia;
     
+    @Builder.Default
     @Column(name = "envio_incluido")
     private Boolean envioIncluido = true;
-    
+
+    @Builder.Default
     @Column(name = "dias_minimo_alquiler")
     private Integer diasMinimoAlquiler = 1;
-    
+
+    @Builder.Default
     @Column(name = "dias_maximo_alquiler")
     private Integer diasMaximoAlquiler = 90;
-    
+
+    @Builder.Default
     @Column(name = "deposito_seguridad", precision = 12, scale = 2)
     private BigDecimal depositoSeguridad = BigDecimal.ZERO;
-    
+
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "estado")
     private EstadoHerramienta estado = EstadoHerramienta.ACTIVO;
-    
+
+    @Builder.Default
     @Column(name = "calificacion_promedio", precision = 3, scale = 2)
     private BigDecimal calificacionPromedio = BigDecimal.ZERO;
-    
+
+    @Builder.Default
     @Column(name = "total_calificaciones")
     private Integer totalCalificaciones = 0;
-    
+
+    @Builder.Default
     @Column(name = "total_alquileres")
     private Integer totalAlquileres = 0;
-    
+
+    @Builder.Default
     @Column(name = "vistas")
     private Integer vistas = 0;
     

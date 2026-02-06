@@ -6,7 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.GenericGenerator;
+// import org.hibernate.annotations.GenericGenerator;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -27,8 +27,7 @@ import java.time.LocalDateTime;
 public class ReservaEntity {
     
     @Id
-    @GeneratedValue(generator = "UUID")
-    @GenericGenerator(name = "UUID", strategy = "org.hibernate.id.UUIDGenerator")
+    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "id", length = 36, updatable = false, nullable = false)
     private String id;
     
@@ -59,6 +58,7 @@ public class ReservaEntity {
     @Column(name = "dias_totales", insertable = false, updatable = false)
     private Integer diasTotales;
     
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "estado")
     private EstadoReserva estado = EstadoReserva.PENDIENTE_PAGO;
