@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - RentaHerramientas</title>
+    <title>Mi Negocio - RentaHerramientas</title>
     <link rel="stylesheet" href="/css/main.css">
     <link rel="stylesheet" href="/css/responsive.css">
 </head>
@@ -12,16 +12,16 @@
     <header class="header">
         <div style="display: flex; align-items: center; gap: 20px;">
             <button class="menu-toggle" onclick="toggleSidebar()" style="display: none;">☰</button>
-            <a href="/admin.html" class="header-logo">
+            <a href="/proveedor.html" class="header-logo">
                 <span class="header-logo-icon">🔨</span>
-                <span>Admin Dashboard</span>
+                <span>Mi Negocio</span>
             </a>
         </div>
         <div class="header-user" onclick="toggleUserMenu()">
-            <div class="header-user-avatar" id="userAvatar">A</div>
+            <div class="header-user-avatar" id="userAvatar" style="background-color: #007BFF;">P</div>
             <div class="header-user-info">
-                <div class="header-user-name" id="userName">Administrador</div>
-                <div class="header-user-role">Admin</div>
+                <div class="header-user-name" id="userName">Proveedor</div>
+                <div class="header-user-role">Proveedor</div>
             </div>
             <span>▼</span>
         </div>
@@ -32,21 +32,15 @@
         <aside class="sidebar" id="sidebar">
             <ul class="sidebar-menu">
                 <li class="sidebar-item">
-                    <a href="#" class="sidebar-link active" onclick="cambiarVista('dashboard')">
+                    <a href="#" class="sidebar-link active" onclick="cambiarVista('miNegocio')">
                         <span class="sidebar-icon">📊</span>
-                        <span>Dashboard</span>
+                        <span>Mi Negocio</span>
                     </a>
                 </li>
                 <li class="sidebar-item">
-                    <a href="#" class="sidebar-link" onclick="cambiarVista('usuarios')">
-                        <span class="sidebar-icon">👥</span>
-                        <span>Usuarios</span>
-                    </a>
-                </li>
-                <li class="sidebar-item">
-                    <a href="#" class="sidebar-link" onclick="cambiarVista('herramientas')">
+                    <a href="#" class="sidebar-link" onclick="cambiarVista('misHerramientas')">
                         <span class="sidebar-icon">🛠️</span>
-                        <span>Herramientas</span>
+                        <span>Mis Herramientas</span>
                     </a>
                 </li>
                 <li class="sidebar-item">
@@ -56,9 +50,15 @@
                     </a>
                 </li>
                 <li class="sidebar-item">
-                    <a href="#" class="sidebar-link" onclick="cambiarVista('pagos')">
+                    <a href="#" class="sidebar-link" onclick="cambiarVista('billetera')">
                         <span class="sidebar-icon">💰</span>
-                        <span>Pagos</span>
+                        <span>Billetera</span>
+                    </a>
+                </li>
+                <li class="sidebar-item">
+                    <a href="#" class="sidebar-link" onclick="cambiarVista('estadisticas')">
+                        <span class="sidebar-icon">📈</span>
+                        <span>Estadísticas</span>
                     </a>
                 </li>
                 <li class="sidebar-item">
@@ -72,7 +72,6 @@
 
         <!-- MAIN CONTENT -->
         <main class="main-content" id="mainContent">
-            <!-- El contenido se carga dinámicamente -->
             <div class="loading">
                 <div class="spinner"></div>
                 <p class="loading-text">Cargando...</p>
@@ -80,23 +79,7 @@
         </main>
     </div>
 
-    <!-- MODAL USUARIO -->
-    <div class="modal" id="usuarioModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 class="modal-title">Detalle de Usuario</h3>
-                <button class="modal-close" onclick="cerrarModal('usuarioModal')">✖</button>
-            </div>
-            <div class="modal-body" id="usuarioModalBody">
-                <!-- Contenido dinámico -->
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="cerrarModal('usuarioModal')">Cerrar</button>
-            </div>
-        </div>
-    </div>
-
     <script src="/js/api.js"></script>
-    <script src="/js/admin-dashboard.js"></script>
+    <script src="/js/proveedor-dashboard.js"></script>
 </body>
 </html>
