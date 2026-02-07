@@ -2,13 +2,42 @@
  * AUTH - Login y Registro
  */
 
-// Verificar si ya está autenticado
-if (localStorage.getItem('token')) {
+// Solo ejecutar en páginas de login/registro/index
+const currentPath = window.location.pathname;
+
+const isPublicPage = currentPath.includes('login.html') || 
+                     currentPath.includes('registro.html') ||
+                     currentPath === '/' ||
+                     currentPath === '/index.html' ||
+                     currentPath === '/login' ||
+                     currentPath === '/register' ||
+                     currentPath === '/registro';
+
+// Función para verificar y manejar redirecciones
+function verificarYRedirigir() {
+    const token = localStorage.getItem('token');
     const userRole = localStorage.getItem('userRole');
-    redirigirSegunRol(userRole);
+    
+    console.log('Verificando autenticación...');
+    console.log('Token disponible:', !!token);
+    console.log('Rol:', userRole);
+    
+    if (token && userRole) {
+        console.log('Usuario ya autenticado como:', userRole);
+        
+        // Solo redirigir si estamos en una página pública
+        if (isPublicPage) {
+            console.log('En página pública, redirigiendo al dashboard...');
+            redirigirSegunRol(userRole);
+        }
+    }
 }
 
+// Ejecutar después de que la página cargue
+document.addEventListener('DOMContentLoaded', verificarYRedirigir);
+
 function redirigirSegunRol(role) {
+    console.log('Redirigiendo a dashboard para rol:', role);
     switch(role) {
         case 'ADMIN':
             window.location.href = '/admin.html';
@@ -20,6 +49,7 @@ function redirigirSegunRol(role) {
             window.location.href = '/cliente.html';
             break;
         default:
+            console.warn('Rol no reconocido:', role);
             window.location.href = '/index.html';
     }
 }
@@ -42,15 +72,27 @@ if (loginForm) {
 
         try {
             const response = await api.post('/auth/login', { email, password }, false);
-
+            
+            console.log('Respuesta del login:', response);
+            
+            // Verificar estructura de respuesta
+            if (!response || !response.token) {
+                throw new Error('Respuesta del servidor incompleta');
+            }
+            
             // Guardar datos en localStorage
             localStorage.setItem('token', response.token);
             localStorage.setItem('userId', response.usuario.id);
             localStorage.setItem('userRole', response.usuario.tipo);
             localStorage.setItem('userName', `${response.usuario.nombre} ${response.usuario.apellido}`);
+            
+            console.log('Datos guardados en localStorage');
+            console.log('Token (primeros 20 chars):', response.token.substring(0, 20) + '...');
+            console.log('Rol:', response.usuario.tipo);
 
             mostrarAlerta('¡Bienvenido! Redirigiendo...', 'success');
 
+            // Pequeño delay para que se vea el mensaje
             setTimeout(() => {
                 redirigirSegunRol(response.usuario.tipo);
             }, 1000);
@@ -63,7 +105,7 @@ if (loginForm) {
     });
 }
 
-// REGISTRO
+// REGISTRO (mantén tu código actual)
 const registroForm = document.getElementById('registroForm');
 if (registroForm) {
     registroForm.addEventListener('submit', async (e) => {
@@ -119,4 +161,12 @@ if (registroForm) {
             deshabilitarBoton('registroBtn', false);
         }
     });
+}
+
+// LOGOUT
+function logout() {
+    if (confirm('¿Estás seguro de cerrar sesión?')) {
+        localStorage.clear();
+        window.location.href = '/login.html';
+    }
 }
