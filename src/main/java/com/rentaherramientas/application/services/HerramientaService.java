@@ -91,6 +91,18 @@ public class HerramientaService implements HerramientaUseCase {
         return herramientaRepository.findByCategoriaId(categoriaId);
     }
     
+    // ========== MÉTODO AGREGADO ==========
+    @Override
+    @Transactional(readOnly = true)
+    public List<Herramienta> listarHerramientasPorEstado(String estado) {
+        try {
+            EstadoHerramienta estadoEnum = EstadoHerramienta.valueOf(estado.toUpperCase());
+            return herramientaRepository.findByEstado(estadoEnum);
+        } catch (IllegalArgumentException e) {
+            throw new ValidationException("Estado inválido: " + estado + ". Valores permitidos: ACTIVO, PAUSADO, ELIMINADO");
+        }
+    }
+    
     @Override
     @Transactional(readOnly = true)
     public List<Herramienta> buscarHerramientas(String termino) {
@@ -110,7 +122,12 @@ public class HerramientaService implements HerramientaUseCase {
         Herramienta herramienta = obtenerHerramientaPorId(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Herramienta", "id", id));
         
-        herramienta.setEstado(EstadoHerramienta.valueOf(estado));
+        try {
+            herramienta.setEstado(EstadoHerramienta.valueOf(estado.toUpperCase()));
+        } catch (IllegalArgumentException e) {
+            throw new ValidationException("Estado inválido: " + estado + ". Valores permitidos: ACTIVO, PAUSADO, ELIMINADO");
+        }
+        
         return herramientaRepository.save(herramienta);
     }
     

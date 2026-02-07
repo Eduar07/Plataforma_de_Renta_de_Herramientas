@@ -157,7 +157,7 @@ async function cargarDashboard() {
             alertasHTML += `
                 <div class="alert alert-info">
                     ⏸️ Hay ${herramientasPausadas} herramienta(s) pausadas. 
-                    <a href="#" onclick="cambiarVista('herramientasPausadas')" style="color: #0c5460; text-decoration: underline;">
+                    <a href="#" onclick="cambiarVista('herramientasPausadas'); return false;" style="color: #0c5460; text-decoration: underline;">
                         Ver herramientas pausadas
                     </a>
                 </div>
@@ -312,27 +312,7 @@ function verDetalleUsuario(id) {
     const usuario = datosUsuarios.find(u => u.id === id);
     if (!usuario) return;
 
-    document.getElementById('usuarioModalBody').innerHTML = `
-        <div style="display: grid; gap: 16px;">
-            <div><strong>Email:</strong> ${usuario.email}</div>
-            <div><strong>Nombre:</strong> ${usuario.nombre} ${usuario.apellido}</div>
-            <div><strong>Tipo:</strong> <span class="badge badge-info">${usuario.tipo}</span></div>
-            <div><strong>Estado:</strong> <span class="badge badge-${usuario.estado === 'ACTIVO' ? 'success' : 'danger'}">${usuario.estado}</span></div>
-            <div><strong>Teléfono:</strong> ${usuario.telefono || '-'}</div>
-            <div><strong>Documento:</strong> ${usuario.documentoTipo} ${usuario.documentoNumero}</div>
-            <div><strong>Dirección:</strong> ${usuario.direccion || '-'}</div>
-            <div><strong>Ciudad:</strong> ${usuario.ciudad || '-'}</div>
-            <div><strong>Score:</strong> ${usuario.score}/100</div>
-            <div><strong>Advertencias:</strong> ${usuario.advertencias || 0}/5</div>
-            ${usuario.razonBloqueo ? `
-                <div class="alert alert-danger">
-                    <strong>Razón de Bloqueo:</strong> ${usuario.razonBloqueo}
-                </div>
-            ` : ''}
-        </div>
-    `;
-
-    abrirModal('usuarioModal');
+    alert(`Detalle de usuario:\nEmail: ${usuario.email}\nNombre: ${usuario.nombre} ${usuario.apellido}\nTipo: ${usuario.tipo}\nScore: ${usuario.score}/100`);
 }
 
 async function bloquearUsuario(id) {
@@ -373,8 +353,8 @@ async function cargarHerramientas() {
         </div>
 
         <div class="tabs">
-            <div class="tab active" onclick="cambiarVista('herramientas')">Activas (${datosHerramientasActivas.length})</div>
-            <div class="tab" onclick="cambiarVista('herramientasPausadas')">Pausadas (${datosHerramientasPausadas.length})</div>
+            <div class="tab active" onclick="cambiarVista('herramientas')">Activas</div>
+            <div class="tab" onclick="cambiarVista('herramientasPausadas')">Pausadas</div>
         </div>
 
         <div class="herramientas-grid" id="herramientasGrid">
@@ -475,8 +455,9 @@ async function cargarHerramientasPausadas() {
 
     try {
         // Si ya tenemos los datos, usarlos; si no, cargarlos
-        if (datosHerramientasPausadas.length === 0) {
+        if (datosHerramientasPausadas.length === 0 && datosHerramientasActivas.length === 0) {
             const todasHerramientas = await api.get('/herramientas');
+            datosHerramientasActivas = todasHerramientas.filter(h => h.estado === 'ACTIVO');
             datosHerramientasPausadas = todasHerramientas.filter(h => h.estado === 'PAUSADO');
         }
         
@@ -548,215 +529,12 @@ async function verDetalleHerramienta(id) {
         const herramienta = await api.get(`/herramientas/${id}`);
         console.log('Herramienta cargada:', herramienta);
         
-        let proveedorInfo = '';
-        if (herramienta.proveedorId) {
-            try {
-                const proveedor = await api.get(`/usuarios/${herramienta.proveedorId}`);
-                proveedorInfo = `
-                    <div style="margin-bottom: 20px;">
-                        <h4>Proveedor</h4>
-                        <table class="table-details">
-                            <tr>
-                                <td><strong>Nombre:</strong></td>
-                                <td>${proveedor.nombre} ${proveedor.apellido}</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Email:</strong></td>
-                                <td>${proveedor.email}</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Teléfono:</strong></td>
-                                <td>${proveedor.telefono || '-'}</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Score:</strong></td>
-                                <td>${proveedor.score || 0}/100</td>
-                            </tr>
-                        </table>
-                    </div>
-                `;
-            } catch (error) {
-                console.error('Error cargando proveedor:', error);
-                proveedorInfo = `
-                    <div style="margin-bottom: 20px;">
-                        <h4>Proveedor</h4>
-                        <p>Error al cargar información del proveedor</p>
-                    </div>
-                `;
-            }
-        }
-
-        const modalBody = `
-            <div class="herramienta-detalle-admin">
-                <div style="display: grid; grid-template-columns: 300px 1fr; gap: 30px;">
-                    <!-- Columna izquierda: Imágenes -->
-                    <div>
-                        <div class="herramienta-imagen-principal">
-                            ${herramienta.fotos && herramienta.fotos.length > 0 ? 
-                                `<img src="${herramienta.fotos[0]}" alt="${herramienta.nombre}" 
-                                      style="width: 100%; border-radius: 8px;">` :
-                                `<div style="width: 100%; height: 200px; background: #f8f9fa; 
-                                           border-radius: 8px; display: flex; align-items: center; 
-                                           justify-content: center; color: #6c757d;">
-                                    Sin imagen
-                                </div>`
-                            }
-                        </div>
-                        
-                        ${herramienta.fotos && herramienta.fotos.length > 1 ? `
-                            <div style="display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap;">
-                                ${herramienta.fotos.slice(1).map(foto => `
-                                    <img src="${foto}" alt="Miniatura" 
-                                         style="width: 60px; height: 60px; object-fit: cover; 
-                                                border-radius: 4px; cursor: pointer;"
-                                         onclick="cambiarImagenPrincipal('${foto}')">
-                                `).join('')}
-                            </div>
-                        ` : ''}
-                    </div>
-                    
-                    <!-- Columna derecha: Información -->
-                    <div>
-                        <h3 style="margin: 0 0 10px 0;">${herramienta.nombre}</h3>
-                        <div style="display: flex; gap: 15px; margin-bottom: 20px;">
-                            <span class="badge badge-${herramienta.estado === 'ACTIVO' ? 'success' : 
-                                                      herramienta.estado === 'PAUSADO' ? 'warning' : 'danger'}">
-                                ${herramienta.estado}
-                            </span>
-                            <span style="color: #6c757d;">ID: ${herramienta.id}</span>
-                        </div>
-                        
-                        <div style="margin-bottom: 20px;">
-                            <h4>Información Básica</h4>
-                            <table class="table-details">
-                                <tr>
-                                    <td><strong>Precio por día:</strong></td>
-                                    <td>${formatearMoneda(herramienta.precioBaseDia)}</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Categoría:</strong></td>
-                                    <td>${herramienta.categoriaNombre || 'Sin categoría'}</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Marca/Modelo:</strong></td>
-                                    <td>${herramienta.marca || '-'} ${herramienta.modelo || ''}</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Envío incluido:</strong></td>
-                                    <td>${herramienta.envioIncluido ? '✅ Sí' : '❌ No'}</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Garantía:</strong></td>
-                                    <td>${herramienta.garantia ? '✅ Sí' : '❌ No'}</td>
-                                </tr>
-                            </table>
-                        </div>
-                        
-                        ${proveedorInfo}
-                        
-                        <div style="margin-bottom: 20px;">
-                            <h4>Estadísticas</h4>
-                            <table class="table-details">
-                                <tr>
-                                    <td><strong>Total reservas:</strong></td>
-                                    <td>${herramienta.totalAlquileres || 0}</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Calificación:</strong></td>
-                                    <td>⭐ ${herramienta.calificacionPromedio || 0} (${herramienta.totalCalificaciones || 0} reseñas)</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Vistas:</strong></td>
-                                    <td>${herramienta.vistas || 0}</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Fecha de creación:</strong></td>
-                                    <td>${formatearFecha(herramienta.created_at)}</td>
-                                </tr>
-                            </table>
-                        </div>
-                        
-                        <div>
-                            <h4>Descripción</h4>
-                            <p style="white-space: pre-line;">${herramienta.descripcion || 'Sin descripción'}</p>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Características -->
-                ${herramienta.caracteristicas && herramienta.caracteristicas.length > 0 ? `
-                    <div style="margin-top: 30px;">
-                        <h4>Características</h4>
-                        <ul>
-                            ${herramienta.caracteristicas.map(c => `<li>${c}</li>`).join('')}
-                        </ul>
-                    </div>
-                ` : ''}
-                
-                <!-- Acciones -->
-                <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #dee2e6;">
-                    <div style="display: flex; gap: 15px;">
-                        <button class="btn btn-outline" onclick="verReservasHerramienta('${herramienta.id}')">
-                            📋 Ver Reservas
-                        </button>
-                        <button class="btn btn-outline" onclick="verCalificacionesHerramienta('${herramienta.id}')">
-                            ⭐ Ver Calificaciones
-                        </button>
-                        ${herramienta.estado === 'ACTIVO' ? 
-                            `<button class="btn btn-warning" onclick="pausarHerramienta('${herramienta.id}')">
-                                ⏸️ Pausar
-                            </button>` : 
-                            `<button class="btn btn-success" onclick="activarHerramienta('${herramienta.id}')">
-                                ▶️ Activar
-                            </button>`
-                        }
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        // Crear modal si no existe
-        if (!document.getElementById('modalDetalleHerramienta')) {
-            const modal = document.createElement('div');
-            modal.id = 'modalDetalleHerramienta';
-            modal.className = 'modal';
-            modal.innerHTML = `
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h3 class="modal-title">Detalle de Herramienta</h3>
-                        <button class="modal-close" onclick="cerrarModal('modalDetalleHerramienta')">✖</button>
-                    </div>
-                    <div class="modal-body" id="modalDetalleHerramientaBody"></div>
-                    <div class="modal-footer">
-                        <button class="btn btn-secondary" onclick="cerrarModal('modalDetalleHerramienta')">Cerrar</button>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(modal);
-        }
-        
-        document.getElementById('modalDetalleHerramientaBody').innerHTML = modalBody;
-        abrirModal('modalDetalleHerramienta');
+        alert(`Detalle de herramienta:\nNombre: ${herramienta.nombre}\nPrecio: ${formatearMoneda(herramienta.precioBaseDia)}/día\nEstado: ${herramienta.estado}\nProveedor ID: ${herramienta.proveedorId || 'N/A'}`);
         
     } catch (error) {
         console.error('Error cargando detalle:', error);
         mostrarAlerta('Error al cargar los detalles: ' + error.message, 'danger');
     }
-}
-
-function cambiarImagenPrincipal(url) {
-    const imgPrincipal = document.querySelector('.herramienta-imagen-principal img');
-    if (imgPrincipal) {
-        imgPrincipal.src = url;
-    }
-}
-
-function verReservasHerramienta(herramientaId) {
-    alert('Funcionalidad de ver reservas próximamente para herramienta: ' + herramientaId);
-}
-
-function verCalificacionesHerramienta(herramientaId) {
-    alert('Funcionalidad de ver calificaciones próximamente para herramienta: ' + herramientaId);
 }
 
 async function pausarHerramienta(id) {
@@ -766,15 +544,12 @@ async function pausarHerramienta(id) {
         await api.patch(`/herramientas/${id}/estado?estado=PAUSADO`);
         mostrarAlerta('Herramienta pausada exitosamente', 'success');
         
-        // Actualizar vistas
+        // Recargar la vista actual
         if (vistaActual === 'herramientas') {
             await cargarHerramientas();
         } else if (vistaActual === 'herramientasPausadas') {
             await cargarHerramientasPausadas();
         }
-        
-        // Cerrar modal si está abierto
-        cerrarModal('modalDetalleHerramienta');
         
     } catch (error) {
         console.error('Error:', error);
@@ -789,15 +564,12 @@ async function activarHerramienta(id) {
         await api.patch(`/herramientas/${id}/estado?estado=ACTIVO`);
         mostrarAlerta('Herramienta activada exitosamente', 'success');
         
-        // Actualizar vistas
+        // Recargar la vista actual
         if (vistaActual === 'herramientas') {
             await cargarHerramientas();
         } else if (vistaActual === 'herramientasPausadas') {
             await cargarHerramientasPausadas();
         }
-        
-        // Cerrar modal si está abierto
-        cerrarModal('modalDetalleHerramienta');
         
     } catch (error) {
         console.error('Error:', error);
@@ -926,21 +698,7 @@ async function cargarPagos() {
 }
 
 function renderizarTablaPagos(pagos) {
-    const tbody = document.getElementById('pagosTableBody');
-    
-    if (pagos.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center">No hay pagos</td></tr>';
-        return;
-    }
-
-    tbody.innerHTML = pagos.map(p => `
-        <tr>
-            <td><strong>${p.numeroTransaccion}</strong></td>
-            <td>Cliente ID: ${p.clienteId}</td>
-            <td>${formatearMoneda(p.monto)}</td>
-            <td>${p.metodo}</td>
-            <td>${obtenerBadgeEstado(p.estado, 'PAGO')}</td>
-            <td>${formatearFechaHora(p.created_at)}</td>
-        </tr>
-    `).join('');
+    const tbody = document.getElementById('pagosTableBody').innerHTML = `
+            <tr><td colspan="6" class="text-center">No hay pagos registrados</td></tr>
+        `;
 }

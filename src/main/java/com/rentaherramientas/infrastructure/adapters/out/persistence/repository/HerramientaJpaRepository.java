@@ -22,6 +22,7 @@ public interface HerramientaJpaRepository extends JpaRepository<HerramientaEntit
     
     List<HerramientaEntity> findByCategoriaId(String categoriaId);
     
+    // ✅ ESTE MÉTODO YA EXISTE - NO MODIFICAR
     List<HerramientaEntity> findByEstado(EstadoHerramienta estado);
     
     @Query("SELECT h FROM HerramientaEntity h WHERE " +
