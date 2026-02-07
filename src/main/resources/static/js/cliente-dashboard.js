@@ -193,12 +193,275 @@ function limpiarFiltrosExplorar() {
     renderizarGridExplorar(todasHerramientas);
 }
 
-function verDetalleHerramienta(id) {
-    alert('Modal de detalle de herramienta próximamente. ID: ' + id);
+// ==================== DETALLE DE HERRAMIENTA ====================
+async function verDetalleHerramienta(id) {
+    try {
+        const herramienta = await api.get(`/herramientas/${id}`, false);
+        
+        const modalBody = `
+            <div class="herramienta-detalle">
+                <div class="herramienta-detalle-imagenes">
+                    ${herramienta.fotos && herramienta.fotos.length > 0 ? 
+                        herramienta.fotos.map(foto => `<img src="${foto}" alt="${herramienta.nombre}">`).join('') :
+                        '<img src="https://via.placeholder.com/400x300?text=Sin+Imagen" alt="Sin imagen">'
+                    }
+                </div>
+                <div class="herramienta-detalle-info">
+                    <h3>${herramienta.nombre}</h3>
+                    <p class="herramienta-detalle-marca">${herramienta.marca || ''} ${herramienta.modelo || ''}</p>
+                    <p class="herramienta-detalle-precio">${formatearMoneda(herramienta.precioBaseDia)} / día</p>
+                    
+                    <div class="herramienta-detalle-caracteristicas">
+                        <h4>Características:</h4>
+                        <ul>
+                            ${herramienta.caracteristicas ? `
+                                ${herramienta.caracteristicas.map(c => `<li>${c}</li>`).join('')}
+                            ` : '<li>No hay características especificadas</li>'}
+                        </ul>
+                    </div>
+                    
+                    <div class="herramienta-detalle-descripcion">
+                        <h4>Descripción:</h4>
+                        <p>${herramienta.descripcion || 'No hay descripción disponible'}</p>
+                    </div>
+                    
+                    <div class="herramienta-detalle-proveedor">
+                        <h4>Proveedor:</h4>
+                        <p>Score: ${herramienta.scoreProveedor || 0}/100</p>
+                        <p>Calificación: ⭐ ${herramienta.calificacionPromedioProveedor || 0}</p>
+                    </div>
+                    
+                    <div class="herramienta-detalle-acciones">
+                        <button class="btn btn-primary" onclick="iniciarReserva('${herramienta.id}')">
+                            Reservar Ahora
+                        </button>
+                        <button class="btn btn-outline" onclick="agregarAFavoritos('${herramienta.id}')">
+                            ❤️ Agregar a Favoritos
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Crear o usar modal existente
+        let modal = document.getElementById('modalDetalleHerramienta');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'modalDetalleHerramienta';
+            modal.className = 'modal';
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width: 800px;">
+                    <div class="modal-header">
+                        <h3 class="modal-title">Detalle de Herramienta</h3>
+                        <button class="modal-close" onclick="cerrarModal('modalDetalleHerramienta')">✖</button>
+                    </div>
+                    <div class="modal-body" id="modalDetalleHerramientaBody"></div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+        
+        document.getElementById('modalDetalleHerramientaBody').innerHTML = modalBody;
+        abrirModal('modalDetalleHerramienta');
+        
+    } catch (error) {
+        console.error('Error al cargar detalle:', error);
+        mostrarAlerta('Error al cargar los detalles de la herramienta', 'danger');
+    }
 }
 
-function iniciarReserva(id) {
-    alert('Proceso de reserva próximamente. ID: ' + id);
+// ==================== RESERVA DE HERRAMIENTA ====================
+function iniciarReserva(herramientaId) {
+    // Cerrar modal de detalle si está abierto
+    cerrarModal('modalDetalleHerramienta');
+    
+    // Crear modal de reserva
+    const modalBody = `
+        <form id="formReserva">
+            <input type="hidden" id="herramientaId" value="${herramientaId}">
+            
+            <div class="form-group">
+                <label class="form-label">Fecha de Inicio</label>
+                <input type="date" id="fechaInicio" class="form-control" required 
+                       min="${new Date().toISOString().split('T')[0]}">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Fecha de Fin</label>
+                <input type="date" id="fechaFin" class="form-control" required 
+                       min="${new Date().toISOString().split('T')[0]}">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Cantidad de Días</label>
+                <input type="number" id="dias" class="form-control" min="1" value="1" readonly>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Dirección de Entrega</label>
+                <input type="text" id="direccionEntrega" class="form-control" 
+                       placeholder="Opcional - Si no se especifica, se usará la de tu perfil">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Notas Especiales</label>
+                <textarea id="notas" class="form-control" rows="3" 
+                          placeholder="Instrucciones especiales para la entrega..."></textarea>
+            </div>
+            
+            <div id="resumenReserva" style="margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                <h4>Resumen de Reserva</h4>
+                <p><strong>Precio por día:</strong> <span id="precioDia">$0</span></p>
+                <p><strong>Total estimado:</strong> <span id="totalReserva">$0</span></p>
+            </div>
+            
+            <button type="submit" class="btn btn-primary btn-block" id="btnConfirmarReserva">
+                Confirmar Reserva
+            </button>
+        </form>
+    `;
+    
+    // Crear o usar modal existente
+    let modal = document.getElementById('modalReserva');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'modalReserva';
+        modal.className = 'modal';
+        modal.innerHTML = `
+            <div class="modal-content" style="max-width: 500px;">
+                <div class="modal-header">
+                    <h3 class="modal-title">Nueva Reserva</h3>
+                    <button class="modal-close" onclick="cerrarModal('modalReserva')">✖</button>
+                </div>
+                <div class="modal-body" id="modalReservaBody"></div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+    
+    document.getElementById('modalReservaBody').innerHTML = modalBody;
+    abrirModal('modalReserva');
+    
+    // Configurar eventos para calcular total
+    setTimeout(() => {
+        const fechaInicioInput = document.getElementById('fechaInicio');
+        const fechaFinInput = document.getElementById('fechaFin');
+        
+        if (fechaInicioInput) {
+            fechaInicioInput.addEventListener('change', calcularTotalReserva);
+        }
+        if (fechaFinInput) {
+            fechaFinInput.addEventListener('change', calcularTotalReserva);
+        }
+        
+        // Configurar submit del formulario
+        const formReserva = document.getElementById('formReserva');
+        if (formReserva) {
+            formReserva.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await confirmarReserva(herramientaId);
+            });
+        }
+    }, 100);
+    
+    // Cargar precio inicial
+    cargarPrecioHerramienta(herramientaId);
+}
+
+async function cargarPrecioHerramienta(herramientaId) {
+    try {
+        const herramienta = await api.get(`/herramientas/${herramientaId}`, false);
+        const precioDiaElement = document.getElementById('precioDia');
+        if (precioDiaElement) {
+            precioDiaElement.textContent = formatearMoneda(herramienta.precioBaseDia);
+            calcularTotalReserva();
+        }
+    } catch (error) {
+        console.error('Error cargando precio:', error);
+    }
+}
+
+function calcularTotalReserva() {
+    const fechaInicioInput = document.getElementById('fechaInicio');
+    const fechaFinInput = document.getElementById('fechaFin');
+    const precioDiaElement = document.getElementById('precioDia');
+    const diasInput = document.getElementById('dias');
+    const totalReservaElement = document.getElementById('totalReserva');
+    
+    if (!fechaInicioInput || !fechaFinInput || !precioDiaElement || !diasInput || !totalReservaElement) {
+        return;
+    }
+    
+    const fechaInicio = fechaInicioInput.value;
+    const fechaFin = fechaFinInput.value;
+    const precioDiaText = precioDiaElement.textContent;
+    
+    if (fechaInicio && fechaFin) {
+        const inicio = new Date(fechaInicio);
+        const fin = new Date(fechaFin);
+        
+        if (fin > inicio) {
+            const dias = Math.ceil((fin - inicio) / (1000 * 60 * 60 * 24));
+            diasInput.value = dias;
+            
+            // Extraer número del precio
+            const precioMatch = precioDiaText.match(/[\d,]+/);
+            if (precioMatch) {
+                const precio = parseFloat(precioMatch[0].replace(/,/g, ''));
+                const total = precio * dias;
+                totalReservaElement.textContent = formatearMoneda(total);
+            }
+        }
+    }
+}
+
+async function confirmarReserva(herramientaId) {
+    const fechaInicio = document.getElementById('fechaInicio').value;
+    const fechaFin = document.getElementById('fechaFin').value;
+    const direccionEntrega = document.getElementById('direccionEntrega').value;
+    const notas = document.getElementById('notas').value;
+    
+    if (!fechaInicio || !fechaFin) {
+        mostrarAlerta('Por favor selecciona las fechas', 'warning');
+        return;
+    }
+    
+    if (new Date(fechaFin) <= new Date(fechaInicio)) {
+        mostrarAlerta('La fecha de fin debe ser posterior a la de inicio', 'warning');
+        return;
+    }
+    
+    deshabilitarBoton('btnConfirmarReserva', true);
+    
+    try {
+        const reservaData = {
+            herramientaId: herramientaId,
+            fechaInicio: fechaInicio,
+            fechaFin: fechaFin,
+            direccionEntrega: direccionEntrega || null,
+            notas: notas || null
+        };
+        
+        const response = await api.post('/reservas', reservaData);
+        
+        mostrarAlerta('¡Reserva creada exitosamente!', 'success');
+        cerrarModal('modalReserva');
+        
+        // Redirigir a mis reservas
+        setTimeout(() => {
+            cambiarVista('misReservas');
+        }, 1500);
+        
+    } catch (error) {
+        console.error('Error creando reserva:', error);
+        mostrarAlerta('Error al crear la reserva: ' + (error.message || 'Intenta nuevamente'), 'danger');
+        deshabilitarBoton('btnConfirmarReserva', false);
+    }
+}
+
+function agregarAFavoritos(herramientaId) {
+    // Implementar lógica de favoritos
+    mostrarAlerta('Funcionalidad de favoritos próximamente', 'info');
 }
 
 // ==================== MIS RESERVAS ====================
@@ -311,7 +574,7 @@ function renderizarReservas(reservas) {
                         👁️ Ver Detalle
                     </button>
                     ${r.estado === 'PENDIENTE_PAGO' ? `
-                        <button class="btn btn-primary btn-sm">
+                        <button class="btn btn-primary btn-sm" onclick="pagarReserva('${r.id}')">
                             💳 Pagar Ahora
                         </button>
                         <button class="btn btn-danger btn-sm" onclick="cancelarReserva('${r.id}')">
@@ -329,8 +592,141 @@ function renderizarReservas(reservas) {
     `).join('');
 }
 
-function verDetalleReserva(id) {
-    alert('Ver detalle de reserva: ' + id);
+async function verDetalleReserva(id) {
+    try {
+        const reserva = await api.get(`/reservas/${id}`);
+        const herramienta = await api.get(`/herramientas/${reserva.herramientaId}`, false);
+        
+        const modalBody = `
+            <div class="reserva-detalle">
+                <h3>Reserva #${reserva.numeroReserva}</h3>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0;">
+                    <div>
+                        <h4>Información de la Reserva</h4>
+                        <table class="table-details">
+                            <tr>
+                                <td><strong>Estado:</strong></td>
+                                <td>${obtenerBadgeEstado(reserva.estado, 'RESERVA')}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Fecha de inicio:</strong></td>
+                                <td>${formatearFecha(reserva.fechaInicio)}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Fecha de fin:</strong></td>
+                                <td>${formatearFecha(reserva.fechaFin)}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Días totales:</strong></td>
+                                <td>${reserva.diasTotales} días</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Dirección de entrega:</strong></td>
+                                <td>${reserva.direccionEntrega || 'Usar dirección del perfil'}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Notas:</strong></td>
+                                <td>${reserva.notas || 'Sin notas'}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <div>
+                        <h4>Información de la Herramienta</h4>
+                        <table class="table-details">
+                            <tr>
+                                <td><strong>Nombre:</strong></td>
+                                <td>${herramienta.nombre}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Marca/Modelo:</strong></td>
+                                <td>${herramienta.marca || ''} ${herramienta.modelo || ''}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Precio por día:</strong></td>
+                                <td>${formatearMoneda(herramienta.precioBaseDia)}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Total estimado:</strong></td>
+                                <td>${formatearMoneda(reserva.total || herramienta.precioBaseDia * reserva.diasTotales)}</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+                
+                ${reserva.trackingEnvioIda ? `
+                    <div class="alert alert-info">
+                        <strong>📦 Información de envío:</strong>
+                        <p>Tracking ID: ${reserva.trackingEnvioIda}</p>
+                        ${reserva.trackingEnvioRegreso ? `<p>Tracking de retorno: ${reserva.trackingEnvioRegreso}</p>` : ''}
+                    </div>
+                ` : ''}
+                
+                <div class="acciones-reserva" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #dee2e6;">
+                    ${reserva.estado === 'PENDIENTE_PAGO' ? `
+                        <button class="btn btn-primary" onclick="pagarReserva('${reserva.id}')">
+                            💳 Pagar Ahora
+                        </button>
+                        <button class="btn btn-danger" onclick="cancelarReserva('${reserva.id}')">
+                            ✖️ Cancelar Reserva
+                        </button>
+                    ` : ''}
+                    
+                    ${reserva.estado === 'ENTREGADA' || reserva.estado === 'EN_USO' ? `
+                        <button class="btn btn-success" onclick="marcarComoDevuelta('${reserva.id}')">
+                            ✅ Marcar como Devuelta
+                        </button>
+                    ` : ''}
+                    
+                    ${reserva.estado === 'COMPLETADA' ? `
+                        <button class="btn btn-warning" onclick="calificarReserva('${reserva.id}')">
+                            ⭐ Calificar Experiencia
+                        </button>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+        
+        let modal = document.getElementById('modalDetalleReserva');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'modalDetalleReserva';
+            modal.className = 'modal';
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width: 800px;">
+                    <div class="modal-header">
+                        <h3 class="modal-title">Detalle de Reserva</h3>
+                        <button class="modal-close" onclick="cerrarModal('modalDetalleReserva')">✖</button>
+                    </div>
+                    <div class="modal-body" id="modalDetalleReservaBody"></div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+        
+        document.getElementById('modalDetalleReservaBody').innerHTML = modalBody;
+        abrirModal('modalDetalleReserva');
+        
+    } catch (error) {
+        console.error('Error cargando detalle de reserva:', error);
+        mostrarAlerta('Error al cargar los detalles de la reserva', 'danger');
+    }
+}
+
+async function pagarReserva(id) {
+    try {
+        mostrarAlerta('Redirigiendo al pago...', 'info');
+        // Aquí iría la integración con pasarela de pago
+        // Por ahora simulamos éxito
+        await api.post(`/reservas/${id}/pagar`);
+        mostrarAlerta('¡Pago procesado exitosamente!', 'success');
+        cargarMisReservas();
+        cerrarModal('modalDetalleReserva');
+    } catch (error) {
+        console.error('Error procesando pago:', error);
+        mostrarAlerta('Error al procesar el pago', 'danger');
+    }
 }
 
 async function cancelarReserva(id) {
@@ -342,14 +738,123 @@ async function cancelarReserva(id) {
         await api.post(`/reservas/${id}/cancelar?motivo=${encodeURIComponent(motivo)}&canceladoPor=${userId}`);
         mostrarAlerta('Reserva cancelada exitosamente', 'success');
         cargarMisReservas();
+        cerrarModal('modalDetalleReserva');
     } catch (error) {
         console.error('Error:', error);
         mostrarAlerta('Error al cancelar reserva', 'danger');
     }
 }
 
+async function marcarComoDevuelta(id) {
+    if (!confirm('¿Confirmas que has devuelto la herramienta?')) return;
+    
+    try {
+        await api.post(`/reservas/${id}/devolver`);
+        mostrarAlerta('¡Herramienta marcada como devuelta!', 'success');
+        cargarMisReservas();
+        cerrarModal('modalDetalleReserva');
+    } catch (error) {
+        console.error('Error:', error);
+        mostrarAlerta('Error al marcar como devuelta', 'danger');
+    }
+}
+
 function calificarReserva(id) {
-    alert('Sistema de calificación próximamente. ID: ' + id);
+    const modalBody = `
+        <form id="formCalificacion">
+            <input type="hidden" id="reservaId" value="${id}">
+            
+            <div class="form-group">
+                <label class="form-label">Calificación (1-5 estrellas)</label>
+                <div class="rating-stars" style="font-size: 30px; margin: 10px 0;">
+                    <span onclick="seleccionarEstrella(1)" style="cursor: pointer;">☆</span>
+                    <span onclick="seleccionarEstrella(2)" style="cursor: pointer;">☆</span>
+                    <span onclick="seleccionarEstrella(3)" style="cursor: pointer;">☆</span>
+                    <span onclick="seleccionarEstrella(4)" style="cursor: pointer;">☆</span>
+                    <span onclick="seleccionarEstrella(5)" style="cursor: pointer;">☆</span>
+                </div>
+                <input type="hidden" id="calificacion" value="0">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Comentario (opcional)</label>
+                <textarea id="comentario" class="form-control" rows="3" 
+                          placeholder="¿Cómo fue tu experiencia?"></textarea>
+            </div>
+            
+            <button type="submit" class="btn btn-primary btn-block" id="btnEnviarCalificacion">
+                Enviar Calificación
+            </button>
+        </form>
+    `;
+    
+    let modal = document.getElementById('modalCalificar');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'modalCalificar';
+        modal.className = 'modal';
+        modal.innerHTML = `
+            <div class="modal-content" style="max-width: 500px;">
+                <div class="modal-header">
+                    <h3 class="modal-title">Calificar Experiencia</h3>
+                    <button class="modal-close" onclick="cerrarModal('modalCalificar')">✖</button>
+                </div>
+                <div class="modal-body" id="modalCalificarBody"></div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+    
+    document.getElementById('modalCalificarBody').innerHTML = modalBody;
+    abrirModal('modalCalificar');
+    
+    // Configurar submit
+    document.getElementById('formCalificacion').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await enviarCalificacion(id);
+    });
+}
+
+function seleccionarEstrella(puntuacion) {
+    const stars = document.querySelectorAll('.rating-stars span');
+    stars.forEach((star, index) => {
+        if (index < puntuacion) {
+            star.textContent = '★';
+            star.style.color = '#ffc107';
+        } else {
+            star.textContent = '☆';
+            star.style.color = '#6c757d';
+        }
+    });
+    document.getElementById('calificacion').value = puntuacion;
+}
+
+async function enviarCalificacion(reservaId) {
+    const calificacion = document.getElementById('calificacion').value;
+    const comentario = document.getElementById('comentario').value;
+    
+    if (calificacion == 0) {
+        mostrarAlerta('Por favor selecciona una calificación', 'warning');
+        return;
+    }
+    
+    deshabilitarBoton('btnEnviarCalificacion', true);
+    
+    try {
+        await api.post(`/reservas/${reservaId}/calificar`, {
+            calificacion: parseInt(calificacion),
+            comentario: comentario || null
+        });
+        
+        mostrarAlerta('¡Gracias por tu calificación!', 'success');
+        cerrarModal('modalCalificar');
+        cargarMisReservas();
+        
+    } catch (error) {
+        console.error('Error enviando calificación:', error);
+        mostrarAlerta('Error al enviar calificación', 'danger');
+        deshabilitarBoton('btnEnviarCalificacion', false);
+    }
 }
 
 // ==================== FAVORITOS ====================
@@ -487,5 +992,22 @@ async function cargarPerfil() {
     } catch (error) {
         console.error('Error:', error);
         mostrarAlerta('Error al cargar perfil', 'danger');
+    }
+}
+
+// ==================== FUNCIONES AUXILIARES ====================
+function abrirModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+}
+
+function cerrarModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.remove('active');
+        document.body.style.overflow = '';
     }
 }
