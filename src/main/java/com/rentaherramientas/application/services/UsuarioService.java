@@ -3,10 +3,13 @@ package com.rentaherramientas.application.services;
 import com.rentaherramientas.domain.exceptions.BusinessException;
 import com.rentaherramientas.domain.exceptions.ResourceNotFoundException;
 import com.rentaherramientas.domain.exceptions.ValidationException;
+import com.rentaherramientas.domain.model.PerfilProveedor;
 import com.rentaherramientas.domain.model.Usuario;
+import com.rentaherramientas.domain.model.enums.EstadoKyc;
 import com.rentaherramientas.domain.model.enums.EstadoUsuario;
 import com.rentaherramientas.domain.model.enums.Rol;
 import com.rentaherramientas.domain.ports.in.UsuarioUseCase;
+import com.rentaherramientas.domain.ports.out.PerfilProveedorRepositoryPort;
 import com.rentaherramientas.domain.ports.out.UsuarioRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -16,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Servicio de Aplicación: Usuario
@@ -28,9 +32,14 @@ public class UsuarioService implements UsuarioUseCase {
     
     private final UsuarioRepositoryPort usuarioRepository;
     private final PasswordEncoder passwordEncoder;
+    private final PerfilProveedorRepositoryPort perfilProveedorRepository; // ✅ NUEVA DEPENDENCIA
     
     @Override
     public Usuario crearUsuario(Usuario usuario) {
+        System.out.println("=== CREAR USUARIO - INICIO ===");
+        System.out.println("Email: " + usuario.getEmail());
+        System.out.println("Tipo: " + usuario.getTipo());
+        
         // Validaciones
         if (usuarioRepository.existsByEmail(usuario.getEmail())) {
             throw new ValidationException("El email ya está registrado");
@@ -50,7 +59,55 @@ public class UsuarioService implements UsuarioUseCase {
         usuario.setFechaRegistro(LocalDateTime.now());
         usuario.setUltimaActividad(LocalDateTime.now());
         
-        return usuarioRepository.save(usuario);
+        // Guardar usuario
+        Usuario usuarioGuardado = usuarioRepository.save(usuario);
+        System.out.println("✅ Usuario guardado con ID: " + usuarioGuardado.getId());
+        
+        // ✅ SI ES PROVEEDOR, CREAR AUTOMÁTICAMENTE SU PERFIL
+        if (usuario.getTipo() == Rol.PROVEEDOR) {
+            System.out.println("⚙️ Usuario es PROVEEDOR, creando perfil automáticamente...");
+            crearPerfilProveedorAutomatico(usuarioGuardado);
+        }
+        
+        return usuarioGuardado;
+    }
+    
+    // ✅ NUEVO MÉTODO PRIVADO PARA CREAR PERFIL DE PROVEEDOR
+    private void crearPerfilProveedorAutomatico(Usuario usuario) {
+        try {
+            // Verificar si ya existe un perfil (por si acaso)
+            Optional<PerfilProveedor> perfilExistente = perfilProveedorRepository.findByUsuarioId(usuario.getId());
+            
+            if (perfilExistente.isPresent()) {
+                System.out.println("⚠️ El usuario ya tiene un perfil de proveedor");
+                return;
+            }
+            
+            // Crear perfil nuevo
+            PerfilProveedor perfil = PerfilProveedor.builder()
+                    .id(UUID.randomUUID().toString())
+                    .usuarioId(usuario.getId())
+                    .nombreComercial(usuario.getNombre() + " " + usuario.getApellido()) // Nombre por defecto
+                    .mision("Proveedor de herramientas de calidad") // Misión por defecto
+                    .vision("Ser un proveedor confiable en la plataforma") // Visión por defecto
+                    .calificacionPromedio(0.0)
+                    .totalCalificaciones(0)
+                    .estadoKyc(EstadoKyc.PENDIENTE)
+                    .verificado(false)
+                    .build();
+
+            PerfilProveedor perfilGuardado = perfilProveedorRepository.save(perfil);
+            
+            System.out.println("✅ Perfil de proveedor creado automáticamente");
+            System.out.println("   - ID Perfil: " + perfilGuardado.getId());
+            System.out.println("   - Usuario ID: " + perfilGuardado.getUsuarioId());
+            System.out.println("   - Nombre Comercial: " + perfilGuardado.getNombreComercial());
+            
+        } catch (Exception e) {
+            System.err.println("❌ Error al crear perfil de proveedor automático: " + e.getMessage());
+            e.printStackTrace();
+            // No lanzar excepción para que el registro de usuario no falle
+        }
     }
     
     @Override

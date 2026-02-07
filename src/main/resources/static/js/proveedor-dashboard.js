@@ -52,6 +52,9 @@ function cambiarVista(vista) {
         case 'estadisticas':
             cargarEstadisticas();
             break;
+        case 'miPerfil': // ✅ NUEVA OPCIÓN
+            cargarMiPerfil();
+            break;
     }
 }
 
@@ -383,7 +386,7 @@ function cerrarModalAgregarHerramienta() {
     }
 }
 
-// ========== FUNCIÓN ACTUALIZADA CON VALIDACIÓN ==========
+// ========== FUNCIÓN ACTUALIZADA CON PERFIL_PROVEEDOR_ID ==========
 async function guardarNuevaHerramienta() {
     const form = document.getElementById('formAgregarHerramienta');
     
@@ -426,17 +429,55 @@ async function guardarNuevaHerramienta() {
         return;
     }
     
-    // PASO 2: Construir datos de la herramienta
+    // PASO 2: ✅ OBTENER EL PERFIL_PROVEEDOR_ID DEL USUARIO
+    let perfilProveedorId;
+    try {
+        // Buscar el perfil de proveedor asociado a este usuario
+        const perfilesProveedor = await api.get('/perfiles-proveedor');
+        const miPerfil = perfilesProveedor.find(p => p.usuarioId === userId);
+        
+        if (!miPerfil) {
+            const alertContainer = document.getElementById('alertContainerHerramienta');
+            if (alertContainer) {
+                alertContainer.innerHTML = `
+                    <div class="alert alert-danger">
+                        ❌ Error: No se encontró tu perfil de proveedor en el sistema.<br>
+                        <small>Aunque tu cuenta es de tipo PROVEEDOR, no existe un registro en la tabla perfiles_proveedor.</small><br>
+                        <small>Por favor, ve a "Mi Perfil" y crea tu perfil de proveedor.</small>
+                    </div>
+                `;
+            }
+            return;
+        }
+        
+        perfilProveedorId = miPerfil.id; // ✅ ESTE ES EL ID CORRECTO (660e8400...)
+        console.log('Perfil Proveedor ID:', perfilProveedorId);
+        
+    } catch (error) {
+        console.error('Error obteniendo perfil de proveedor:', error);
+        const alertContainer = document.getElementById('alertContainerHerramienta');
+        if (alertContainer) {
+            alertContainer.innerHTML = `
+                <div class="alert alert-danger">
+                    ❌ Error al obtener tu perfil de proveedor: ${error.message}<br>
+                    <small>Por favor, intenta nuevamente o contacta al administrador.</small>
+                </div>
+            `;
+        }
+        return;
+    }
+    
+    // PASO 3: Construir datos de la herramienta CON EL PERFIL_PROVEEDOR_ID CORRECTO
     const datosHerramienta = {
         nombre: document.getElementById('nombreHerramienta').value.trim(),
-        categoriaId: parseInt(document.getElementById('categoriaHerramienta').value), // CONVERTIR A NÚMERO
-        precioBaseDia: parseInt(document.getElementById('precioHerramienta').value),
+        categoriaId: document.getElementById('categoriaHerramienta').value, // Se envía como String, el backend lo convierte
+        precioBaseDia: parseFloat(document.getElementById('precioHerramienta').value),
         marca: document.getElementById('marcaHerramienta').value.trim() || null,
         modelo: document.getElementById('modeloHerramienta').value.trim() || null,
         descripcion: document.getElementById('descripcionHerramienta').value.trim(),
         envioIncluido: document.getElementById('envioIncluidoHerramienta').checked,
-        garantia: document.getElementById('garantiaHerramienta').checked,
-        proveedorId: userId // Se enviará como String, el backend debe convertirlo a Long
+        garantia: document.getElementById('garantiaHerramienta').checked || false,
+        proveedorId: perfilProveedorId // ✅ USAR EL PERFIL_PROVEEDOR_ID, NO EL USUARIO_ID
     };
 
     // Agregar foto si se proporcionó
@@ -474,8 +515,7 @@ async function guardarNuevaHerramienta() {
             alertContainer.innerHTML = `
                 <div class="alert alert-danger">
                     ❌ Error al agregar herramienta: ${error.message}<br>
-                    <small>Detalles: ${JSON.stringify(error)}</small><br>
-                    <small>Verifica que tu cuenta esté correctamente registrada como PROVEEDOR</small>
+                    <small>Detalles: ${JSON.stringify(error)}</small>
                 </div>
             `;
         }
@@ -697,4 +737,212 @@ function cargarEstadisticas() {
             <div class="empty-state-text">Próximamente podrás ver gráficos detallados de tu negocio</div>
         </div>
     `;
+}
+
+// ==================== MI PERFIL DE PROVEEDOR ====================
+async function cargarMiPerfil() {
+    const mainContent = document.getElementById('mainContent');
+    
+    mainContent.innerHTML = `
+        <div class="page-header">
+            <h1 class="page-title">👤 Mi Perfil de Proveedor</h1>
+            <p class="page-subtitle">Configura la información de tu negocio</p>
+        </div>
+
+        <div class="card" id="perfilProveedorCard">
+            <div class="card-header">Información del Negocio</div>
+            <div class="card-body">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p class="loading-text">Cargando perfil...</p>
+                </div>
+            </div>
+        </div>
+    `;
+
+    try {
+        const userId = localStorage.getItem('userId');
+        
+        // Obtener perfil de proveedor
+        const perfiles = await api.get('/perfiles-proveedor');
+        const miPerfil = perfiles.find(p => p.usuarioId === userId);
+        
+        if (!miPerfil) {
+            // Si no tiene perfil, mostrar opción para crearlo
+            document.getElementById('perfilProveedorCard').innerHTML = `
+                <div class="card-header">⚠️ Perfil Incompleto</div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <p>No se encontró tu perfil de proveedor. Esto puede deberse a que tu cuenta fue creada antes de que se implementara esta funcionalidad.</p>
+                        <button class="btn btn-primary" onclick="crearPerfilManual()">
+                            ✅ Crear Mi Perfil Ahora
+                        </button>
+                    </div>
+                </div>
+            `;
+            return;
+        }
+
+        // Mostrar formulario de edición
+        document.getElementById('perfilProveedorCard').innerHTML = `
+            <div class="card-header">Información del Negocio</div>
+            <div class="card-body">
+                <div id="alertContainerPerfil"></div>
+                
+                <form id="formEditarPerfil">
+                    <div class="form-group">
+                        <label class="form-label">Nombre Comercial *</label>
+                        <input type="text" class="form-control" id="nombreComercial" 
+                               value="${miPerfil.nombreComercial}" required>
+                        <small style="color: #6c757d;">El nombre con el que aparecerás en la plataforma</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Misión</label>
+                        <textarea class="form-control" id="mision" rows="3" 
+                                  placeholder="¿Cuál es el propósito de tu negocio?">${miPerfil.mision || ''}</textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Visión</label>
+                        <textarea class="form-control" id="vision" rows="3" 
+                                  placeholder="¿A dónde quieres llegar con tu negocio?">${miPerfil.vision || ''}</textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">URL del Logo (opcional)</label>
+                        <input type="url" class="form-control" id="logoUrl" 
+                               value="${miPerfil.logoUrl || ''}" 
+                               placeholder="https://ejemplo.com/logo.png">
+                    </div>
+
+                    <div style="background: #f8f9fa; padding: 16px; border-radius: 8px; margin-top: 20px;">
+                        <h5 style="margin: 0 0 12px 0;">📊 Estadísticas</h5>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px;">
+                            <div>
+                                <strong>Calificación:</strong><br>
+                                ⭐ ${miPerfil.calificacionPromedio || 0} / 5
+                            </div>
+                            <div>
+                                <strong>Reseñas:</strong><br>
+                                ${miPerfil.totalCalificaciones || 0} reseñas
+                            </div>
+                            <div>
+                                <strong>Estado KYC:</strong><br>
+                                <span class="badge badge-${miPerfil.estadoKyc === 'APROBADO' ? 'success' : 'warning'}">
+                                    ${miPerfil.estadoKyc}
+                                </span>
+                            </div>
+                            <div>
+                                <strong>Verificado:</strong><br>
+                                ${miPerfil.verificado ? '✅ Sí' : '❌ No'}
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" id="btnGuardarPerfil" style="margin-top: 20px;">
+                        💾 Guardar Cambios
+                    </button>
+                </form>
+            </div>
+        `;
+
+        // Agregar event listener al formulario
+        document.getElementById('formEditarPerfil').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await guardarPerfilProveedor(miPerfil.id);
+        });
+
+    } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('perfilProveedorCard').innerHTML = `
+            <div class="card-body">
+                <div class="alert alert-danger">
+                    ❌ Error al cargar perfil: ${error.message}
+                </div>
+            </div>
+        `;
+    }
+}
+
+async function guardarPerfilProveedor(perfilId) {
+    const datosActualizados = {
+        nombreComercial: document.getElementById('nombreComercial').value.trim(),
+        mision: document.getElementById('mision').value.trim() || null,
+        vision: document.getElementById('vision').value.trim() || null,
+        logoUrl: document.getElementById('logoUrl').value.trim() || null
+    };
+
+    if (!datosActualizados.nombreComercial) {
+        mostrarAlerta('El nombre comercial es obligatorio', 'warning');
+        return;
+    }
+
+    deshabilitarBoton('btnGuardarPerfil', true);
+
+    try {
+        await api.put(`/perfiles-proveedor/${perfilId}`, datosActualizados);
+        
+        const alertContainer = document.getElementById('alertContainerPerfil');
+        if (alertContainer) {
+            alertContainer.innerHTML = `
+                <div class="alert alert-success">
+                    ✅ Perfil actualizado exitosamente
+                </div>
+            `;
+        }
+
+        // Actualizar el nombre en el header
+        document.getElementById('userName').textContent = datosActualizados.nombreComercial;
+
+        deshabilitarBoton('btnGuardarPerfil', false);
+
+        // Ocultar mensaje después de 3 segundos
+        setTimeout(() => {
+            if (alertContainer) {
+                alertContainer.innerHTML = '';
+            }
+        }, 3000);
+
+    } catch (error) {
+        console.error('Error:', error);
+        const alertContainer = document.getElementById('alertContainerPerfil');
+        if (alertContainer) {
+            alertContainer.innerHTML = `
+                <div class="alert alert-danger">
+                    ❌ Error al actualizar perfil: ${error.message}
+                </div>
+            `;
+        }
+        deshabilitarBoton('btnGuardarPerfil', false);
+    }
+}
+
+// Función para crear perfil manualmente (para usuarios antiguos)
+async function crearPerfilManual() {
+    const userId = localStorage.getItem('userId');
+    const userName = localStorage.getItem('userName');
+    
+    try {
+        const nuevoPerfil = {
+            usuarioId: userId,
+            nombreComercial: userName || 'Mi Negocio',
+            mision: 'Proveedor de herramientas de calidad',
+            vision: 'Ser un proveedor confiable en la plataforma',
+            estadoKyc: 'PENDIENTE',
+            verificado: false
+        };
+
+        await api.post('/perfiles-proveedor', nuevoPerfil);
+        mostrarAlerta('✅ Perfil creado exitosamente', 'success');
+        
+        // Recargar la vista
+        setTimeout(() => {
+            cargarMiPerfil();
+        }, 1500);
+
+    } catch (error) {
+        console.error('Error:', error);
+        mostrarAlerta('Error al crear perfil: ' + error.message, 'danger');
+    }
 }
