@@ -61,6 +61,7 @@ public class HerramientaRepositoryAdapter implements HerramientaRepositoryPort {
                 .collect(Collectors.toList());
     }
     
+    // ✅ ESTE MÉTODO YA EXISTE - PERFECTO
     @Override
     public List<Herramienta> findByEstado(EstadoHerramienta estado) {
         return jpaRepository.findByEstado(estado).stream()

@@ -23,6 +23,7 @@ public interface HerramientaRepositoryPort {
     
     List<Herramienta> findByCategoriaId(String categoriaId);
     
+    // ✅ ESTE MÉTODO YA EXISTE - PERFECTO
     List<Herramienta> findByEstado(EstadoHerramienta estado);
     
     List<Herramienta> searchByNombreOrMarcaOrModelo(String termino);

@@ -16,7 +16,9 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -154,6 +156,39 @@ public class ReservaController {
         boolean disponible = reservaService.verificarDisponibilidad(herramientaId, inicio, fin);
         
         return ResponseEntity.ok(ApiResponse.success(disponible));
+    }
+    
+    // ========== NUEVO ENDPOINT AGREGADO ==========
+    @PostMapping("/verificar-disponibilidad")
+    @Operation(summary = "Verificar disponibilidad de herramienta - POST (público)")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> verificarDisponibilidadPost(
+            @RequestBody Map<String, String> request) {
+        
+        try {
+            String herramientaId = request.get("herramientaId");
+            String fechaInicio = request.get("fechaInicio");
+            String fechaFin = request.get("fechaFin");
+            
+            LocalDate inicio = LocalDate.parse(fechaInicio);
+            LocalDate fin = LocalDate.parse(fechaFin);
+            
+            boolean disponible = reservaService.verificarDisponibilidad(herramientaId, inicio, fin);
+            
+            Map<String, Object> resultado = new HashMap<>();
+            resultado.put("disponible", disponible);
+            resultado.put("mensaje", disponible ? 
+                "Herramienta disponible en estas fechas" : 
+                "La herramienta ya está reservada en este período");
+            
+            return ResponseEntity.ok(ApiResponse.success(resultado));
+            
+        } catch (Exception e) {
+            Map<String, Object> resultado = new HashMap<>();
+            resultado.put("disponible", false);
+            resultado.put("mensaje", "Error al verificar disponibilidad: " + e.getMessage());
+            
+            return ResponseEntity.ok(ApiResponse.success(resultado));
+        }
     }
     
     private Reserva mapearReservaDomain(ReservaRequest request) {
