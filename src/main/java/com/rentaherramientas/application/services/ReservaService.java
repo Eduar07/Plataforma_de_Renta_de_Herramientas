@@ -2,6 +2,8 @@ package com.rentaherramientas.application.services;
 
 import com.rentaherramientas.domain.exceptions.BusinessException;
 import com.rentaherramientas.domain.exceptions.ResourceNotFoundException;
+import com.rentaherramientas.domain.exceptions.ValidationException;
+import com.rentaherramientas.domain.model.Herramienta;
 import com.rentaherramientas.domain.model.Reserva;
 import com.rentaherramientas.domain.model.enums.EstadoReserva;
 import com.rentaherramientas.domain.ports.in.ReservaUseCase;
@@ -14,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 
@@ -30,25 +33,62 @@ public class ReservaService implements ReservaUseCase {
     
     @Override
     public Reserva crearReserva(Reserva reserva) {
-        // Validar herramienta existe
-        herramientaRepository.findById(reserva.getHerramientaId())
+        System.out.println("=== CREAR RESERVA - INICIO ===");
+        System.out.println("Cliente ID: " + reserva.getClienteId());
+        System.out.println("Herramienta ID: " + reserva.getHerramientaId());
+        System.out.println("Proveedor ID recibido: " + reserva.getProveedorId());
+        
+        // PASO 1: Validar que la herramienta existe
+        Herramienta herramienta = herramientaRepository.findById(reserva.getHerramientaId())
                 .orElseThrow(() -> new ResourceNotFoundException("Herramienta", "id", reserva.getHerramientaId()));
         
-        // Validar fechas
-        if (reserva.getFechaFin().isBefore(reserva.getFechaInicio())) {
-            throw new BusinessException("La fecha de fin no puede ser anterior a la fecha de inicio");
+        System.out.println("Herramienta encontrada: " + herramienta.getNombre());
+        System.out.println("Proveedor ID de la herramienta: " + herramienta.getProveedorId());
+        
+        // PASO 2: ✅ OBTENER EL PERFIL_PROVEEDOR_ID A PARTIR DEL USUARIO_ID
+        // La herramienta.getProveedorId() ya devuelve el perfil_proveedor_id (660e8400...)
+        // Pero si el frontend envía usuario_id (550e8400...), debemos convertirlo
+        
+        String perfilProveedorId = herramienta.getProveedorId(); // Este YA es el correcto
+        
+        if (perfilProveedorId == null || perfilProveedorId.trim().isEmpty()) {
+            throw new ValidationException("La herramienta no tiene un proveedor asignado");
         }
         
-        // Validar disponibilidad
+        System.out.println("Perfil Proveedor ID a usar: " + perfilProveedorId);
+        
+        // PASO 3: Asignar el perfil_proveedor_id CORRECTO a la reserva
+        reserva.setProveedorId(perfilProveedorId);
+        
+        // PASO 4: Validar disponibilidad
         if (!verificarDisponibilidad(reserva.getHerramientaId(), reserva.getFechaInicio(), reserva.getFechaFin())) {
-            throw new BusinessException("La herramienta no está disponible en las fechas seleccionadas");
+            throw new ValidationException("La herramienta no está disponible en las fechas seleccionadas");
         }
         
-        // Generar número de reserva
+        // PASO 5: Calcular días totales (ya está como GENERATED COLUMN, pero lo dejamos por si acaso)
+        long diasTotales = ChronoUnit.DAYS.between(reserva.getFechaInicio(), reserva.getFechaFin()) + 1;
+        // No necesitamos setear diasTotales porque es GENERATED ALWAYS
+        
+        // PASO 6: Generar número de reserva único
         reserva.setNumeroReserva(generarNumeroReserva());
+        
+        // PASO 7: Estado inicial
         reserva.setEstado(EstadoReserva.PENDIENTE_PAGO);
         
-        return reservaRepository.save(reserva);
+        System.out.println("=== DATOS FINALES DE RESERVA ===");
+        System.out.println("Número Reserva: " + reserva.getNumeroReserva());
+        System.out.println("Cliente ID: " + reserva.getClienteId());
+        System.out.println("Proveedor ID (perfil): " + reserva.getProveedorId());
+        System.out.println("Herramienta ID: " + reserva.getHerramientaId());
+        System.out.println("Estado: " + reserva.getEstado());
+        
+        // PASO 8: Guardar reserva
+        Reserva reservaGuardada = reservaRepository.save(reserva);
+        
+        System.out.println("=== RESERVA CREADA EXITOSAMENTE ===");
+        System.out.println("ID Reserva: " + reservaGuardada.getId());
+        
+        return reservaGuardada;
     }
     
     @Override

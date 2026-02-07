@@ -175,7 +175,7 @@ function limpiarFiltrosExplorar() {
     renderizarGridExplorar(herramientasData);
 }
 
-// ========== MODAL DE DETALLE DE HERRAMIENTA - NUEVO ==========
+// ========== MODAL DE DETALLE DE HERRAMIENTA ==========
 async function verDetalleHerramientaCliente(id) {
     try {
         const herramienta = await api.get(`/herramientas/${id}`);
@@ -241,7 +241,6 @@ async function verDetalleHerramientaCliente(id) {
                                         ${herramienta.estado}
                                     </span>
                                     ${herramienta.envioIncluido ? '<span class="badge badge-info">📦 Envío incluido</span>' : ''}
-                                    ${herramienta.garantia ? '<span class="badge badge-success">✅ Con garantía</span>' : ''}
                                 </div>
                                 
                                 <div style="margin-bottom: 20px;">
@@ -501,6 +500,7 @@ async function calcularCostoReserva() {
     }
 }
 
+// ========== FUNCIÓN ACTUALIZADA CON PROVEEDORID ==========
 async function confirmarReserva() {
     const form = document.getElementById('formCrearReserva');
     
@@ -510,20 +510,41 @@ async function confirmarReserva() {
     }
 
     const userId = localStorage.getItem('userId');
+    const herramientaId = document.getElementById('herramientaIdReserva').value;
     
-    const datosReserva = {
-        herramientaId: document.getElementById('herramientaIdReserva').value,
-        clienteId: userId,
-        fechaInicio: document.getElementById('fechaInicio').value,
-        fechaFin: document.getElementById('fechaFin').value,
-        direccionEntrega: document.getElementById('direccionEntrega').value.trim(),
-        ciudadEntrega: document.getElementById('ciudadEntrega').value.trim(),
-        notasCliente: document.getElementById('notasReserva').value.trim() || null
-    };
-
-    deshabilitarBoton('btnConfirmarReserva', true);
-
     try {
+        // PASO 1: Obtener la herramienta para sacar el proveedorId
+        const herramienta = await api.get(`/herramientas/${herramientaId}`);
+        
+        if (!herramienta.proveedorId) {
+            const alertContainer = document.getElementById('alertContainerReserva');
+            if (alertContainer) {
+                alertContainer.innerHTML = `
+                    <div class="alert alert-danger">
+                        ❌ Error: La herramienta no tiene un proveedor asignado
+                    </div>
+                `;
+            }
+            return;
+        }
+        
+        // PASO 2: Construir datos de la reserva CON proveedorId
+        const datosReserva = {
+            herramientaId: herramientaId,
+            clienteId: userId,
+            proveedorId: herramienta.proveedorId, // ✅ AGREGAR ESTE CAMPO
+            fechaInicio: document.getElementById('fechaInicio').value,
+            fechaFin: document.getElementById('fechaFin').value,
+            direccionEntrega: document.getElementById('direccionEntrega').value.trim(),
+            ciudadEntrega: document.getElementById('ciudadEntrega').value.trim(),
+            notasCliente: document.getElementById('notasReserva').value.trim() || null
+        };
+
+        console.log('Datos de reserva a enviar:', datosReserva);
+
+        deshabilitarBoton('btnConfirmarReserva', true);
+
+        // PASO 3: Crear la reserva
         const response = await api.post('/reservas', datosReserva);
         
         // Mostrar mensaje de éxito
@@ -545,12 +566,13 @@ async function confirmarReserva() {
         }, 2000);
 
     } catch (error) {
-        console.error('Error:', error);
+        console.error('Error completo:', error);
         const alertContainer = document.getElementById('alertContainerReserva');
         if (alertContainer) {
             alertContainer.innerHTML = `
                 <div class="alert alert-danger">
-                    ❌ Error al crear la reserva: ${error.message}
+                    ❌ Error al crear la reserva: ${error.message}<br>
+                    <small>Por favor, intenta nuevamente o contacta al administrador</small>
                 </div>
             `;
         }

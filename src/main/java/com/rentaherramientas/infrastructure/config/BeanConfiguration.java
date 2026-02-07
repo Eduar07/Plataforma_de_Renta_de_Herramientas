@@ -7,10 +7,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-/**
- * Configuración de Beans de la Aplicación
- * Define los servicios de dominio y sus dependencias
- */
 @Configuration
 public class BeanConfiguration {
 
@@ -22,8 +18,16 @@ public class BeanConfiguration {
     @Bean
     public UsuarioService usuarioService(
             UsuarioRepositoryPort usuarioRepository,
-            PasswordEncoder passwordEncoder) {
-        return new UsuarioService(usuarioRepository, passwordEncoder);
+            PasswordEncoder passwordEncoder,
+            PerfilProveedorRepositoryPort perfilProveedorRepository) {
+        return new UsuarioService(usuarioRepository, passwordEncoder, perfilProveedorRepository);
+    }
+
+    // ✅ NUEVO BEAN
+    @Bean
+    public PerfilProveedorService perfilProveedorService(
+            PerfilProveedorRepositoryPort perfilProveedorRepository) {
+        return new PerfilProveedorService(perfilProveedorRepository);
     }
 
     @Bean
