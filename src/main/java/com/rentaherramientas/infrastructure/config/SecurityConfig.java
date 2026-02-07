@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -17,6 +18,7 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -47,9 +49,18 @@ public class SecurityConfig {
             .sessionManagement(session -> 
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                // Rutas públicas
-                .requestMatchers("/", "/index.html", "/login.html", "/register.html").permitAll()
+                // Rutas públicas - archivos HTML
+                .requestMatchers("/", "/index.html", "/login.html", "/registro.html").permitAll()
+                
+                // PERMITE acceso inicial a los dashboards (la seguridad real está en el frontend)
+                .requestMatchers("/admin.html", "/cliente.html", "/proveedor.html").permitAll()
+                
+                // Rutas públicas - recursos estáticos
                 .requestMatchers("/css/**", "/js/**", "/images/**", "/assets/**").permitAll()
+                .requestMatchers("/main.css", "/responsive.css").permitAll()
+                .requestMatchers("/js/**").permitAll()
+                
+                // Rutas públicas - API de autenticación
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 .requestMatchers("/actuator/**").permitAll()
@@ -58,21 +69,19 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/herramientas/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/categorias/**").permitAll()
                 
-                // Rutas de Admin
-                .requestMatchers("/api/admin/**", "/admin.html").hasRole("ADMIN")
-                
-                // Rutas de Proveedor
+                // Rutas de API protegidas por rol
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/proveedor/**").hasRole("PROVEEDOR")
-                
-                // Rutas de Cliente
                 .requestMatchers("/api/cliente/**").hasRole("CLIENTE")
                 
                 // Rutas protegidas generales
-                .requestMatchers("/dashboard.html", "/herramientas.html").authenticated()
                 .requestMatchers("/api/reservas/**", "/api/pagos/**", "/api/facturas/**").authenticated()
                 
                 // Todas las demás requieren autenticación
                 .anyRequest().authenticated()
+            )
+            .exceptionHandling(exception -> exception
+                .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
             )
             .authenticationProvider(authenticationProvider())
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
@@ -85,7 +94,9 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(Arrays.asList(
             "http://localhost:8080",
-            "http://127.0.0.1:8080"
+            "http://127.0.0.1:8080",
+            "http://localhost:3000",  // Por si usas otro puerto para el frontend
+            "http://127.0.0.1:3000"
         ));
         configuration.setAllowedMethods(Arrays.asList(
             "GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"
