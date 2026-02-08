@@ -4,7 +4,8 @@ import com.rentaherramientas.application.dto.request.PerfilProveedorRequest;
 import com.rentaherramientas.application.dto.response.PerfilProveedorResponse;
 import com.rentaherramientas.domain.model.PerfilProveedor;
 import com.rentaherramientas.domain.ports.in.PerfilProveedorUseCase;
-import com.rentaherramientas.infrastructure.adapters.in.rest.mapper.PerfilProveedorDtoMapper;
+import com.rentaherramientas.infrastructure.adapters.out.persistence.mapper.PerfilProveedorDtoMapper;
+
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;

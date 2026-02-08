@@ -1,4 +1,4 @@
-package com.rentaherramientas.infrastructure.adapters.in.rest.mapper;
+package com.rentaherramientas.infrastructure.adapters.out.persistence.mapper;
 
 import com.rentaherramientas.domain.model.PerfilProveedor;
 import com.rentaherramientas.domain.model.enums.EstadoKyc;

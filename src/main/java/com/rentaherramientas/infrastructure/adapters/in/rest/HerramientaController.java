@@ -50,15 +50,30 @@ public class HerramientaController {
         return ResponseEntity.ok(ApiResponse.success(mapearHerramientaResponse(herramienta)));
     }
     
+    // ========== ✅ NUEVO MÉTODO: LISTAR POR PROVEEDOR (USUARIO_ID) ==========
     @GetMapping("/proveedor/{proveedorId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'PROVEEDOR')")
-    @Operation(summary = "Listar herramientas por proveedor")
+    @Operation(summary = "Listar herramientas por proveedor (acepta usuario_id o perfil_proveedor_id)")
     public ResponseEntity<ApiResponse<List<HerramientaResponse>>> listarPorProveedor(@PathVariable String proveedorId) {
-        List<HerramientaResponse> herramientas = herramientaService.listarHerramientasPorProveedor(proveedorId).stream()
-                .map(this::mapearHerramientaResponse)
-                .collect(Collectors.toList());
-        
-        return ResponseEntity.ok(ApiResponse.success(herramientas));
+        try {
+            System.out.println("=== LISTAR HERRAMIENTAS POR PROVEEDOR ===");
+            System.out.println("Proveedor ID recibido: " + proveedorId);
+            
+            // Listar todas las herramientas del proveedor
+            List<HerramientaResponse> herramientas = herramientaService.listarHerramientasPorProveedor(proveedorId).stream()
+                    .map(this::mapearHerramientaResponse)
+                    .collect(Collectors.toList());
+            
+            System.out.println("Herramientas encontradas: " + herramientas.size());
+            
+            return ResponseEntity.ok(ApiResponse.success(herramientas));
+            
+        } catch (Exception e) {
+            System.err.println("Error al listar herramientas: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Error al listar herramientas: " + e.getMessage()));
+        }
     }
     
     @GetMapping("/categoria/{categoriaId}")

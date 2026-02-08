@@ -3,16 +3,19 @@ package com.rentaherramientas.application.services;
 import com.rentaherramientas.domain.exceptions.BusinessException;
 import com.rentaherramientas.domain.exceptions.ResourceNotFoundException;
 import com.rentaherramientas.domain.exceptions.ValidationException;
+import com.rentaherramientas.domain.model.DetalleReserva;
 import com.rentaherramientas.domain.model.Herramienta;
 import com.rentaherramientas.domain.model.Reserva;
 import com.rentaherramientas.domain.model.enums.EstadoReserva;
+import com.rentaherramientas.domain.ports.in.DetalleReservaUseCase;
+import com.rentaherramientas.domain.ports.in.HerramientaUseCase;
 import com.rentaherramientas.domain.ports.in.ReservaUseCase;
-import com.rentaherramientas.domain.ports.out.HerramientaRepositoryPort;
 import com.rentaherramientas.domain.ports.out.ReservaRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -29,7 +32,8 @@ import java.util.Optional;
 public class ReservaService implements ReservaUseCase {
     
     private final ReservaRepositoryPort reservaRepository;
-    private final HerramientaRepositoryPort herramientaRepository;
+    private final HerramientaUseCase herramientaService;
+    private final DetalleReservaUseCase detalleReservaService;
     
     @Override
     public Reserva crearReserva(Reserva reserva) {
@@ -39,17 +43,14 @@ public class ReservaService implements ReservaUseCase {
         System.out.println("Proveedor ID recibido: " + reserva.getProveedorId());
         
         // PASO 1: Validar que la herramienta existe
-        Herramienta herramienta = herramientaRepository.findById(reserva.getHerramientaId())
+        Herramienta herramienta = herramientaService.obtenerHerramientaPorId(reserva.getHerramientaId())
                 .orElseThrow(() -> new ResourceNotFoundException("Herramienta", "id", reserva.getHerramientaId()));
         
         System.out.println("Herramienta encontrada: " + herramienta.getNombre());
         System.out.println("Proveedor ID de la herramienta: " + herramienta.getProveedorId());
         
-        // PASO 2: ✅ OBTENER EL PERFIL_PROVEEDOR_ID A PARTIR DEL USUARIO_ID
-        // La herramienta.getProveedorId() ya devuelve el perfil_proveedor_id (660e8400...)
-        // Pero si el frontend envía usuario_id (550e8400...), debemos convertirlo
-        
-        String perfilProveedorId = herramienta.getProveedorId(); // Este YA es el correcto
+        // PASO 2: OBTENER EL PERFIL_PROVEEDOR_ID DE LA HERRAMIENTA
+        String perfilProveedorId = herramienta.getProveedorId();
         
         if (perfilProveedorId == null || perfilProveedorId.trim().isEmpty()) {
             throw new ValidationException("La herramienta no tiene un proveedor asignado");
@@ -65,9 +66,11 @@ public class ReservaService implements ReservaUseCase {
             throw new ValidationException("La herramienta no está disponible en las fechas seleccionadas");
         }
         
-        // PASO 5: Calcular días totales (ya está como GENERATED COLUMN, pero lo dejamos por si acaso)
-        long diasTotales = ChronoUnit.DAYS.between(reserva.getFechaInicio(), reserva.getFechaFin()) + 1;
-        // No necesitamos setear diasTotales porque es GENERATED ALWAYS
+        // PASO 5: Calcular días totales
+        long diasTotales = ChronoUnit.DAYS.between(reserva.getFechaInicio(), reserva.getFechaFin());
+        if (diasTotales <= 0) {
+            throw new ValidationException("El período de reserva debe ser de al menos 1 día");
+        }
         
         // PASO 6: Generar número de reserva único
         reserva.setNumeroReserva(generarNumeroReserva());
@@ -81,12 +84,68 @@ public class ReservaService implements ReservaUseCase {
         System.out.println("Proveedor ID (perfil): " + reserva.getProveedorId());
         System.out.println("Herramienta ID: " + reserva.getHerramientaId());
         System.out.println("Estado: " + reserva.getEstado());
+        System.out.println("Días totales: " + diasTotales);
         
         // PASO 8: Guardar reserva
         Reserva reservaGuardada = reservaRepository.save(reserva);
         
         System.out.println("=== RESERVA CREADA EXITOSAMENTE ===");
         System.out.println("ID Reserva: " + reservaGuardada.getId());
+        
+        // PASO 9: CREAR DETALLE FINANCIERO AUTOMÁTICAMENTE
+        try {
+            System.out.println("=== CREANDO DETALLE FINANCIERO ===");
+            
+            // Calcular costos
+            BigDecimal precioDia = herramienta.getPrecioBaseDia();
+            BigDecimal subtotal = precioDia.multiply(new BigDecimal(diasTotales));
+            BigDecimal seguro = subtotal.multiply(new BigDecimal("0.05")); // 5% seguro
+            BigDecimal costoEnvioIda = BigDecimal.ZERO;
+            BigDecimal costoEnvioVuelta = BigDecimal.ZERO;
+            BigDecimal descuento = BigDecimal.ZERO;
+            
+            // Total = subtotal + seguro (sin envío por ahora)
+            BigDecimal total = subtotal.add(seguro).subtract(descuento);
+            
+            // Calcular comisión admin (10%)
+            BigDecimal porcentajeComision = new BigDecimal("10.00");
+            BigDecimal comisionAdmin = total.multiply(porcentajeComision)
+                    .divide(new BigDecimal("100"), 2, BigDecimal.ROUND_HALF_UP);
+            
+            System.out.println("Precio/día: " + precioDia);
+            System.out.println("Subtotal: " + subtotal);
+            System.out.println("Seguro: " + seguro);
+            System.out.println("Total: " + total);
+            System.out.println("Comisión admin: " + comisionAdmin);
+            
+            // Crear detalle financiero
+            DetalleReserva detalle = DetalleReserva.builder()
+                    .reservaId(reservaGuardada.getId())
+                    .precioDiaSnapshot(precioDia)
+                    .subtotalAlquiler(subtotal)
+                    .costoSeguro(seguro)
+                    .costoEnvioIda(costoEnvioIda)
+                    .costoEnvioVuelta(costoEnvioVuelta)
+                    .descuento(descuento)
+                    .codigoCupon(null)
+                    .cuponId(null)
+                    .totalPagado(total)
+                    .comisionAdmin(comisionAdmin)
+                    .porcentajeComision(porcentajeComision)
+                    .depositoSeguridad(herramienta.getDepositoSeguridad() != null 
+                            ? herramienta.getDepositoSeguridad() 
+                            : BigDecimal.ZERO)
+                    .build();
+            
+            DetalleReserva detalleGuardado = detalleReservaService.crearDetalleReserva(detalle);
+            
+            System.out.println("✅ Detalle financiero creado exitosamente");
+            System.out.println("ID Detalle: " + detalleGuardado.getId());
+            
+        } catch (Exception e) {
+            System.err.println("⚠️ Error al crear detalle financiero: " + e.getMessage());
+            e.printStackTrace();
+        }
         
         return reservaGuardada;
     }
@@ -96,13 +155,30 @@ public class ReservaService implements ReservaUseCase {
         Reserva existente = obtenerReservaPorId(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Reserva", "id", id));
         
-        // Actualizar campos permitidos
-        existente.setNotasCliente(reserva.getNotasCliente());
-        existente.setNotasProveedor(reserva.getNotasProveedor());
-        existente.setTrackingEnvioIda(reserva.getTrackingEnvioIda());
-        existente.setTrackingEnvioVuelta(reserva.getTrackingEnvioVuelta());
+        System.out.println("=== ACTUALIZAR RESERVA ===");
+        System.out.println("ID: " + id);
         
-        return reservaRepository.save(existente);
+        // Actualizar campos permitidos
+        if (reserva.getNotasCliente() != null) {
+            existente.setNotasCliente(reserva.getNotasCliente());
+        }
+        if (reserva.getNotasProveedor() != null) {
+            existente.setNotasProveedor(reserva.getNotasProveedor());
+        }
+        if (reserva.getTrackingEnvioIda() != null) {
+            existente.setTrackingEnvioIda(reserva.getTrackingEnvioIda());
+        }
+        if (reserva.getTrackingEnvioVuelta() != null) {
+            existente.setTrackingEnvioVuelta(reserva.getTrackingEnvioVuelta());
+        }
+        if (reserva.getDireccionEnvioId() != null) {
+            existente.setDireccionEnvioId(reserva.getDireccionEnvioId());
+        }
+        
+        Reserva actualizada = reservaRepository.save(existente);
+        System.out.println("✅ Reserva actualizada exitosamente");
+        
+        return actualizada;
     }
     
     @Override
@@ -143,35 +219,82 @@ public class ReservaService implements ReservaUseCase {
     
     @Override
     public Reserva cambiarEstado(String id, String nuevoEstado) {
+        System.out.println("=== CAMBIAR ESTADO DE RESERVA ===");
+        System.out.println("ID: " + id);
+        System.out.println("Nuevo estado: " + nuevoEstado);
+        
         Reserva reserva = obtenerReservaPorId(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Reserva", "id", id));
         
-        EstadoReserva estadoEnum = EstadoReserva.valueOf(nuevoEstado);
+        System.out.println("Estado actual: " + reserva.getEstado());
+        
+        EstadoReserva estadoEnum;
+        try {
+            estadoEnum = EstadoReserva.valueOf(nuevoEstado);
+        } catch (IllegalArgumentException e) {
+            throw new ValidationException("Estado inválido: " + nuevoEstado);
+        }
+        
         reserva.setEstado(estadoEnum);
         
+        // Actualizar timestamps según el estado
         switch (estadoEnum) {
-            case PAGADA -> reserva.setFechaPago(LocalDateTime.now());
-            case CONFIRMADA -> reserva.setFechaConfirmacion(LocalDateTime.now());
-            case ENVIADA -> reserva.setFechaEnvio(LocalDateTime.now());
-            case ENTREGADA -> reserva.setFechaEntrega(LocalDateTime.now());
-            case DEVUELTA -> reserva.setFechaDevolucionReal(LocalDateTime.now());
-            case COMPLETADA -> reserva.setFechaCompletada(LocalDateTime.now());
-            default -> {
-                // Estados que no requieren timestamp
+            case PAGADA -> {
+                reserva.setFechaPago(LocalDateTime.now());
+                System.out.println("✅ Estado cambiado a PAGADA - Fecha de pago registrada");
             }
-}
-
+            case CONFIRMADA -> {
+                reserva.setFechaConfirmacion(LocalDateTime.now());
+                System.out.println("✅ Estado cambiado a CONFIRMADA - Fecha de confirmación registrada");
+            }
+            case ENVIADA -> {
+                reserva.setFechaEnvio(LocalDateTime.now());
+                System.out.println("✅ Estado cambiado a ENVIADA - Fecha de envío registrada");
+            }
+            case ENTREGADA -> {
+                reserva.setFechaEntrega(LocalDateTime.now());
+                System.out.println("✅ Estado cambiado a ENTREGADA - Fecha de entrega registrada");
+            }
+            case DEVUELTA -> {
+                reserva.setFechaDevolucionReal(LocalDateTime.now());
+                System.out.println("✅ Estado cambiado a DEVUELTA - Fecha de devolución registrada");
+            }
+            case COMPLETADA -> {
+                reserva.setFechaCompletada(LocalDateTime.now());
+                System.out.println("✅ Estado cambiado a COMPLETADA - Fecha de completado registrada");
+            }
+            case CANCELADA_CLIENTE, CANCELADA_PROVEEDOR, CANCELADA_SISTEMA -> {
+                if (reserva.getFechaCancelacion() == null) {
+                    reserva.setFechaCancelacion(LocalDateTime.now());
+                }
+                System.out.println("✅ Estado cambiado a " + estadoEnum + " - Fecha de cancelación registrada");
+            }
+            default -> {
+                System.out.println("✅ Estado cambiado a " + estadoEnum);
+            }
+        }
         
-        return reservaRepository.save(reserva);
+        Reserva actualizada = reservaRepository.save(reserva);
+        System.out.println("✅ Estado actualizado exitosamente");
+        
+        return actualizada;
     }
     
     @Override
     public Reserva cancelarReserva(String id, String motivo, String canceladoPor) {
+        System.out.println("=== CANCELAR RESERVA ===");
+        System.out.println("ID: " + id);
+        System.out.println("Motivo: " + motivo);
+        System.out.println("Cancelado por: " + canceladoPor);
+        
         Reserva reserva = obtenerReservaPorId(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Reserva", "id", id));
         
+        System.out.println("Estado actual: " + reserva.getEstado());
+        
+        // Validar que la reserva pueda ser cancelada
         if (!reserva.puedeCancelarse()) {
-            throw new BusinessException("La reserva no puede ser cancelada en su estado actual");
+            throw new BusinessException("La reserva no puede ser cancelada en su estado actual: " + reserva.getEstado());
         }
         
         reserva.setEstado(EstadoReserva.CANCELADA_CLIENTE);
@@ -179,21 +302,51 @@ public class ReservaService implements ReservaUseCase {
         reserva.setCanceladoPor(canceladoPor);
         reserva.setFechaCancelacion(LocalDateTime.now());
         
-        return reservaRepository.save(reserva);
+        Reserva cancelada = reservaRepository.save(reserva);
+        System.out.println("✅ Reserva cancelada exitosamente");
+        
+        return cancelada;
     }
     
     @Override
     @Transactional(readOnly = true)
     public boolean verificarDisponibilidad(String herramientaId, LocalDate fechaInicio, LocalDate fechaFin) {
+        System.out.println("=== VERIFICAR DISPONIBILIDAD ===");
+        System.out.println("Herramienta ID: " + herramientaId);
+        System.out.println("Fecha inicio: " + fechaInicio);
+        System.out.println("Fecha fin: " + fechaFin);
+        
         List<Reserva> reservasExistentes = reservaRepository.findByHerramientaId(herramientaId);
         
-        return reservasExistentes.stream()
-                .filter(r -> r.isActiva())
-                .noneMatch(r -> 
-                    !(fechaFin.isBefore(r.getFechaInicio()) || fechaInicio.isAfter(r.getFechaFin()))
-                );
+        System.out.println("Reservas existentes: " + reservasExistentes.size());
+        
+        // Filtrar solo reservas activas
+        List<Reserva> reservasActivas = reservasExistentes.stream()
+                .filter(Reserva::isActiva)
+                .toList();
+        
+        System.out.println("Reservas activas: " + reservasActivas.size());
+        
+        // Verificar si hay solapamiento de fechas
+        boolean disponible = reservasActivas.stream()
+                .noneMatch(r -> {
+                    boolean solapa = !(fechaFin.isBefore(r.getFechaInicio()) || fechaInicio.isAfter(r.getFechaFin()));
+                    if (solapa) {
+                        System.out.println("❌ Conflicto con reserva: " + r.getNumeroReserva() + 
+                                " (" + r.getFechaInicio() + " - " + r.getFechaFin() + ")");
+                    }
+                    return solapa;
+                });
+        
+        System.out.println(disponible ? "✅ Disponible" : "❌ No disponible");
+        
+        return disponible;
     }
     
+    /**
+     * Generar número único de reserva
+     * MÉTODO PRIVADO - No forma parte de la interfaz
+     */
     private String generarNumeroReserva() {
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
         return "RES-" + timestamp;

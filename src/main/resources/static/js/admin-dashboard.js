@@ -646,8 +646,199 @@ function renderizarTablaReservas(reservas) {
     `).join('');
 }
 
-function verDetalleReserva(id) {
-    alert('Ver detalle de reserva: ' + id);
+// ==================== MODAL DE DETALLE DE RESERVA (ADMIN) ====================
+async function verDetalleReserva(id) {
+    try {
+        const reserva = await api.get(`/reservas/${id}`);
+        const herramienta = await api.get(`/herramientas/${reserva.herramientaId}`);
+        const cliente = await api.get(`/usuarios/${reserva.clienteId}`);
+        
+        let detalleReserva = null;
+        try {
+            detalleReserva = await api.get(`/detalle-reserva/reserva/${id}`);
+        } catch (error) {
+            console.warn('No se encontró detalle financiero');
+        }
+
+        const modalHTML = `
+            <div class="modal active" id="modalDetalleReservaAdmin">
+                <div class="modal-content" style="max-width: 900px;">
+                    <div class="modal-header">
+                        <h3 class="modal-title">📋 Detalle de Reserva #${reserva.numeroReserva}</h3>
+                        <button class="modal-close" onclick="cerrarModalDetalleReservaAdmin()">✖</button>
+                    </div>
+                    <div class="modal-body">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+                            <!-- Columna Izquierda -->
+                            <div>
+                                <h4 style="border-bottom: 2px solid #ff8c00; padding-bottom: 10px; margin-bottom: 15px;">
+                                    👤 Cliente
+                                </h4>
+                                <table class="table-details">
+                                    <tr>
+                                        <td>Nombre:</td>
+                                        <td><strong>${cliente.nombre} ${cliente.apellido}</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Email:</td>
+                                        <td>${cliente.email}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Teléfono:</td>
+                                        <td>${cliente.telefono || 'No registrado'}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Score:</td>
+                                        <td><strong>${cliente.score}/100</strong></td>
+                                    </tr>
+                                </table>
+
+                                <h4 style="border-bottom: 2px solid #ff8c00; padding-bottom: 10px; margin: 20px 0 15px 0;">
+                                    🛠️ Herramienta
+                                </h4>
+                                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                                    <img src="${herramienta.fotos && herramienta.fotos[0] || 'https://via.placeholder.com/300x150'}"
+                                         style="width: 100%; border-radius: 6px; margin-bottom: 10px;"
+                                         onerror="this.src='https://via.placeholder.com/300x150'">
+                                    <p style="margin: 0; font-weight: 600; font-size: 16px;">${herramienta.nombre}</p>
+                                    <p style="margin: 5px 0 0 0; color: #6c757d; font-size: 14px;">
+                                        ${herramienta.marca || ''} ${herramienta.modelo || ''}
+                                    </p>
+                                </div>
+
+                                <h4 style="border-bottom: 2px solid #ff8c00; padding-bottom: 10px; margin: 20px 0 15px 0;">
+                                    📅 Fechas
+                                </h4>
+                                <table class="table-details">
+                                    <tr>
+                                        <td>Inicio:</td>
+                                        <td><strong>${formatearFecha(reserva.fechaInicio)}</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Fin:</td>
+                                        <td><strong>${formatearFecha(reserva.fechaFin)}</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Días totales:</td>
+                                        <td><strong>${reserva.diasTotales} día(s)</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Creada:</td>
+                                        <td>${formatearFechaHora(reserva.createdAt)}</td>
+                                    </tr>
+                                </table>
+                            </div>
+
+                            <!-- Columna Derecha -->
+                            <div>
+                                <h4 style="border-bottom: 2px solid #ff8c00; padding-bottom: 10px; margin-bottom: 15px;">
+                                    ℹ️ Estado
+                                </h4>
+                                <div style="margin-bottom: 20px;">
+                                    ${obtenerBadgeEstado(reserva.estado, 'RESERVA')}
+                                </div>
+
+                                <h4 style="border-bottom: 2px solid #ff8c00; padding-bottom: 10px; margin: 20px 0 15px 0;">
+                                    📍 Entrega
+                                </h4>
+                                <table class="table-details">
+                                    <tr>
+                                        <td>Dirección:</td>
+                                        <td>${reserva.direccionEntrega || 'No especificada'}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Ciudad:</td>
+                                        <td>${reserva.ciudadEntrega || 'No especificada'}</td>
+                                    </tr>
+                                    ${reserva.trackingEnvioIda ? `
+                                        <tr>
+                                            <td>Tracking:</td>
+                                            <td><code style="background: #f8f9fa; padding: 4px 8px; border-radius: 4px;">
+                                                ${reserva.trackingEnvioIda}
+                                            </code></td>
+                                        </tr>
+                                    ` : ''}
+                                </table>
+
+                                ${detalleReserva ? `
+                                    <h4 style="border-bottom: 2px solid #ff8c00; padding-bottom: 10px; margin: 20px 0 15px 0;">
+                                        💰 Detalle Financiero
+                                    </h4>
+                                    <table class="table-details">
+                                        <tr>
+                                            <td>Precio/día:</td>
+                                            <td>${formatearMoneda(detalleReserva.precioDiaSnapshot)}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Subtotal alquiler:</td>
+                                            <td>${formatearMoneda(detalleReserva.subtotalAlquiler)}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Seguro:</td>
+                                            <td>${formatearMoneda(detalleReserva.costoSeguro)}</td>
+                                        </tr>
+                                        ${detalleReserva.descuento > 0 ? `
+                                            <tr>
+                                                <td>Descuento:</td>
+                                                <td style="color: #28a745;">
+                                                    -${formatearMoneda(detalleReserva.descuento)}
+                                                    ${detalleReserva.codigoCupon ? `<br><small>(${detalleReserva.codigoCupon})</small>` : ''}
+                                                </td>
+                                            </tr>
+                                        ` : ''}
+                                        <tr style="border-top: 2px solid #dee2e6; background: #fff3cd;">
+                                            <td><strong>Total pagado:</strong></td>
+                                            <td><strong style="color: #ff8c00; font-size: 18px;">
+                                                ${formatearMoneda(detalleReserva.totalPagado)}
+                                            </strong></td>
+                                        </tr>
+                                        <tr style="background: #d4edda;">
+                                            <td><strong>Comisión admin:</strong></td>
+                                            <td><strong style="color: #28a745;">
+                                                ${formatearMoneda(detalleReserva.comisionAdmin)} 
+                                                (${detalleReserva.porcentajeComision}%)
+                                            </strong></td>
+                                        </tr>
+                                    </table>
+                                ` : ''}
+
+                                ${reserva.notasCliente || reserva.notasProveedor ? `
+                                    <h4 style="border-bottom: 2px solid #ff8c00; padding-bottom: 10px; margin: 20px 0 15px 0;">
+                                        📝 Notas
+                                    </h4>
+                                    ${reserva.notasCliente ? `
+                                        <div style="background: #e7f3ff; padding: 12px; border-radius: 6px; margin-bottom: 10px;">
+                                            <strong style="color: #0056b3;">Cliente:</strong>
+                                            <p style="margin: 5px 0 0 0; font-size: 14px;">${reserva.notasCliente}</p>
+                                        </div>
+                                    ` : ''}
+                                    ${reserva.notasProveedor ? `
+                                        <div style="background: #fff3cd; padding: 12px; border-radius: 6px;">
+                                            <strong style="color: #856404;">Proveedor:</strong>
+                                            <p style="margin: 5px 0 0 0; font-size: 14px;">${reserva.notasProveedor}</p>
+                                        </div>
+                                    ` : ''}
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" onclick="cerrarModalDetalleReservaAdmin()">Cerrar</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+    } catch (error) {
+        console.error('Error:', error);
+        mostrarAlerta('Error al cargar detalle de reserva: ' + error.message, 'danger');
+    }
+}
+
+function cerrarModalDetalleReservaAdmin() {
+    const modal = document.getElementById('modalDetalleReservaAdmin');
+    if (modal) modal.remove();
 }
 
 // ==================== PAGOS ====================
@@ -698,7 +889,8 @@ async function cargarPagos() {
 }
 
 function renderizarTablaPagos(pagos) {
-    const tbody = document.getElementById('pagosTableBody').innerHTML = `
-            <tr><td colspan="6" class="text-center">No hay pagos registrados</td></tr>
-        `;
+    const tbody = document.getElementById('pagosTableBody');
+    tbody.innerHTML = `
+        <tr><td colspan="6" class="text-center">No hay pagos registrados</td></tr>
+    `;
 }
