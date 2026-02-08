@@ -1,37 +1,37 @@
 package com.rentaherramientas.infrastructure.adapters.out.persistence.mapper;
 
-import com.rentaherramientas.domain.model.PerfilProveedor;
-import com.rentaherramientas.domain.model.enums.EstadoKyc;
 import com.rentaherramientas.application.dto.request.PerfilProveedorRequest;
 import com.rentaherramientas.application.dto.response.PerfilProveedorResponse;
+import com.rentaherramientas.domain.model.PerfilProveedor;
 import org.springframework.stereotype.Component;
 
-import java.util.UUID;
-
 /**
- * Mapper: PerfilProveedor DTO
+ * Mapper: PerfilProveedor ↔ DTOs (Request/Response)
  */
 @Component
 public class PerfilProveedorDtoMapper {
     
+    /**
+     * Convierte Request → Domain
+     * NO incluye id ni usuarioId - se setean desde el controller
+     */
     public PerfilProveedor toDomain(PerfilProveedorRequest request) {
         if (request == null) return null;
         
         return PerfilProveedor.builder()
-                .id(UUID.randomUUID().toString())
-                .usuarioId(request.getUsuarioId())
+                // ❌ NO setear id aquí - se setea en el controller
+                // ❌ NO setear usuarioId aquí - viene del @RequestParam
                 .nombreComercial(request.getNombreComercial())
                 .mision(request.getMision())
                 .vision(request.getVision())
                 .logoUrl(request.getLogoUrl())
-                .calificacionPromedio(0.0)
-                .totalCalificaciones(0)
-                .estadoKyc(request.getEstadoKyc() != null ? 
-                    EstadoKyc.valueOf(request.getEstadoKyc()) : EstadoKyc.PENDIENTE)
-                .verificado(request.getVerificado() != null ? request.getVerificado() : false)
+                // ❌ NO setear campos autogenerados aquí
                 .build();
     }
     
+    /**
+     * Convierte Domain → Response
+     */
     public PerfilProveedorResponse toResponse(PerfilProveedor domain) {
         if (domain == null) return null;
         

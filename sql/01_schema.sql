@@ -63,7 +63,6 @@ CREATE TABLE perfiles_proveedor (
     INDEX idx_verificado (verificado),
     INDEX idx_calificacion (calificacion_promedio)
 ) ENGINE=InnoDB;
-
 -- ============================================
 -- TABLA 3: DIRECCIONES_ENVIO
 -- ============================================
