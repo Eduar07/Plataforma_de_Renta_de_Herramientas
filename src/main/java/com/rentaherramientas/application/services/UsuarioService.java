@@ -32,7 +32,7 @@ public class UsuarioService implements UsuarioUseCase {
     
     private final UsuarioRepositoryPort usuarioRepository;
     private final PasswordEncoder passwordEncoder;
-    private final PerfilProveedorRepositoryPort perfilProveedorRepository; // ✅ NUEVA DEPENDENCIA
+    private final PerfilProveedorRepositoryPort perfilProveedorRepository;
     
     @Override
     public Usuario crearUsuario(Usuario usuario) {
@@ -72,10 +72,12 @@ public class UsuarioService implements UsuarioUseCase {
         return usuarioGuardado;
     }
     
-    // ✅ NUEVO MÉTODO PRIVADO PARA CREAR PERFIL DE PROVEEDOR
+    /**
+     * ✅ MÉTODO PRIVADO: Crear perfil de proveedor automáticamente
+     */
     private void crearPerfilProveedorAutomatico(Usuario usuario) {
         try {
-            // Verificar si ya existe un perfil (por si acaso)
+            // Verificar si ya existe un perfil
             Optional<PerfilProveedor> perfilExistente = perfilProveedorRepository.findByUsuarioId(usuario.getId());
             
             if (perfilExistente.isPresent()) {
@@ -87,10 +89,10 @@ public class UsuarioService implements UsuarioUseCase {
             PerfilProveedor perfil = PerfilProveedor.builder()
                     .id(UUID.randomUUID().toString())
                     .usuarioId(usuario.getId())
-                    .nombreComercial(usuario.getNombre() + " " + usuario.getApellido()) // Nombre por defecto
-                    .mision("Proveedor de herramientas de calidad") // Misión por defecto
-                    .vision("Ser un proveedor confiable en la plataforma") // Visión por defecto
-                    .calificacionPromedio(0.0)
+                    .nombreComercial(usuario.getNombre() + " " + usuario.getApellido())
+                    .mision("Proveedor de herramientas de calidad")
+                    .vision("Ser un proveedor confiable en la plataforma")
+                    .calificacionPromedio(Double.valueOf(0.0))  // ✅ CORRECCIÓN: Conversión explícita
                     .totalCalificaciones(0)
                     .estadoKyc(EstadoKyc.PENDIENTE)
                     .verificado(false)

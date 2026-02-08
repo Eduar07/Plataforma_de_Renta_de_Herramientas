@@ -308,11 +308,309 @@ function limpiarFiltrosUsuarios() {
     renderizarTablaUsuarios(datosUsuarios);
 }
 
-function verDetalleUsuario(id) {
-    const usuario = datosUsuarios.find(u => u.id === id);
-    if (!usuario) return;
+async function verDetalleUsuario(id) {
+    try {
+        console.log('Cargando detalle de usuario ID:', id);
+        
+        const usuario = await api.get(`/usuarios/${id}`);
+        console.log('Usuario cargado:', usuario);
+        
+        // Obtener estadísticas adicionales
+        let reservasInfo = '';
+        try {
+            if (usuario.tipo === 'CLIENTE') {
+                const reservas = await api.get(`/reservas/cliente/${id}`);
+                const reservasActivas = reservas.filter(r => 
+                    !['COMPLETADA', 'CANCELADA_CLIENTE', 'CANCELADA_PROVEEDOR', 'CANCELADA_SISTEMA'].includes(r.estado)
+                ).length;
+                const reservasCompletadas = reservas.filter(r => r.estado === 'COMPLETADA').length;
+                
+                reservasInfo = `
+                    <div style="background: #e7f3ff; padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+                        <h4 style="margin: 0 0 12px 0; font-size: 16px;">📋 Estadísticas de Reservas</h4>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+                            <div style="text-align: center;">
+                                <div style="font-size: 24px; font-weight: bold; color: #007bff;">${reservas.length}</div>
+                                <div style="font-size: 12px; color: #6c757d;">Total</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 24px; font-weight: bold; color: #28a745;">${reservasActivas}</div>
+                                <div style="font-size: 12px; color: #6c757d;">Activas</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 24px; font-weight: bold; color: #ffc107;">${reservasCompletadas}</div>
+                                <div style="font-size: 12px; color: #6c757d;">Completadas</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (usuario.tipo === 'PROVEEDOR') {
+                const herramientas = await api.get('/herramientas');
+                const herramientasProveedor = herramientas.filter(h => h.proveedorId === id);
+                const herramientasActivas = herramientasProveedor.filter(h => h.estado === 'ACTIVO').length;
+                const herramientasPausadas = herramientasProveedor.filter(h => h.estado === 'PAUSADO').length;
+                
+                reservasInfo = `
+                    <div style="background: #e7f3ff; padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+                        <h4 style="margin: 0 0 12px 0; font-size: 16px;">🛠️ Estadísticas de Herramientas</h4>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+                            <div style="text-align: center;">
+                                <div style="font-size: 24px; font-weight: bold; color: #007bff;">${herramientasProveedor.length}</div>
+                                <div style="font-size: 12px; color: #6c757d;">Total</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 24px; font-weight: bold; color: #28a745;">${herramientasActivas}</div>
+                                <div style="font-size: 12px; color: #6c757d;">Activas</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 24px; font-weight: bold; color: #ffc107;">${herramientasPausadas}</div>
+                                <div style="font-size: 12px; color: #6c757d;">Pausadas</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('Error cargando estadísticas:', error);
+            reservasInfo = `
+                <div style="background: #fff3cd; padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+                    <h4 style="margin: 0 0 12px 0; font-size: 16px;">📊 Estadísticas</h4>
+                    <p style="margin: 0; color: #856404; font-size: 14px;">
+                        ⚠️ No se pudieron cargar las estadísticas
+                    </p>
+                </div>
+            `;
+        }
 
-    alert(`Detalle de usuario:\nEmail: ${usuario.email}\nNombre: ${usuario.nombre} ${usuario.apellido}\nTipo: ${usuario.tipo}\nScore: ${usuario.score}/100`);
+        const modalHTML = `
+            <div class="modal active" id="modalDetalleUsuarioAdmin">
+                <div class="modal-content" style="max-width: 900px;">
+                    <div class="modal-header">
+                        <h3 class="modal-title">👤 Detalle de Usuario (Admin)</h3>
+                        <button class="modal-close" onclick="cerrarModalDetalleUsuarioAdmin()">✖</button>
+                    </div>
+                    <div class="modal-body">
+                        <div style="display: grid; grid-template-columns: 350px 1fr; gap: 30px;">
+                            <!-- Columna izquierda: Info básica -->
+                            <div>
+                                <div style="width: 100%; margin-bottom: 15px;">
+                                    <div style="width: 120px; height: 120px; background: #007bff; 
+                                                 border-radius: 50%; display: flex; align-items: center; 
+                                                 justify-content: center; margin: 0 auto 20px auto;">
+                                        <span style="font-size: 48px; color: white; font-weight: bold;">
+                                            ${usuario.nombre.charAt(0).toUpperCase()}
+                                        </span>
+                                    </div>
+                                    <h2 style="text-align: center; margin: 0 0 10px 0; font-size: 28px;">
+                                        ${usuario.nombre} ${usuario.apellido}
+                                    </h2>
+                                    <div style="text-align: center;">
+                                        <span class="badge badge-${usuario.tipo === 'ADMIN' ? 'danger' : usuario.tipo === 'PROVEEDOR' ? 'warning' : 'info'}">
+                                            ${usuario.tipo}
+                                        </span>
+                                        <span class="badge badge-${usuario.estado === 'ACTIVO' ? 'success' : 'danger'}">
+                                            ${usuario.estado}
+                                        </span>
+                                    </div>
+                                </div>
+                                
+                                <div style="background: #fff3cd; padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+                                    <div style="font-size: 14px; color: #856404; margin-bottom: 8px;">Score del Usuario</div>
+                                    <div style="font-size: 32px; font-weight: bold; color: #ff8c00; text-align: center;">
+                                        ${usuario.score}/100
+                                    </div>
+                                    <div style="font-size: 14px; margin-top: 8px; text-align: center;">
+                                        ${usuario.advertencias || 0} advertencia(s) | ${usuario.sanciones || 0} sanción(es)
+                                    </div>
+                                </div>
+                                
+                                <div style="margin-top: 20px;">
+                                    <h4 style="margin: 0 0 12px 0; font-size: 16px; color: #6c757d;">⚡ Acciones Rápidas</h4>
+                                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                                        ${usuario.estado === 'ACTIVO' 
+                                            ? `<button class="btn btn-danger btn-sm" onclick="bloquearUsuarioModal('${usuario.id}')">
+                                                🔒 Bloquear Usuario
+                                               </button>`
+                                            : `<button class="btn btn-success btn-sm" onclick="desbloquearUsuarioModal('${usuario.id}')">
+                                                🔓 Desbloquear Usuario
+                                               </button>`
+                                        }
+                                        <button class="btn btn-outline btn-sm" onclick="enviarNotificacionUsuario('${usuario.id}')">
+                                            📨 Enviar Notificación
+                                        </button>
+                                        <button class="btn btn-outline btn-sm" onclick="verHistorialUsuario('${usuario.id}')">
+                                            📊 Ver Historial
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Columna derecha: Información detallada -->
+                            <div>
+                                ${reservasInfo}
+                                
+                                <div style="margin-bottom: 20px;">
+                                    <h4 style="margin: 0 0 12px 0; font-size: 16px; color: #6c757d;">📋 Información Personal</h4>
+                                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
+                                        <div>
+                                            <strong>Email:</strong><br>
+                                            <a href="mailto:${usuario.email}" style="color: #007bff;">
+                                                ${usuario.email}
+                                            </a>
+                                        </div>
+                                        <div>
+                                            <strong>Teléfono:</strong><br>
+                                            ${usuario.telefono || 'No registrado'}
+                                        </div>
+                                        <div>
+                                            <strong>Documento:</strong><br>
+                                            ${usuario.documentoTipo || 'N/A'}: ${usuario.documentoNumero || 'N/A'}
+                                        </div>
+                                        <div>
+                                            <strong>ID Usuario:</strong><br>
+                                            <code style="font-size: 12px;">${usuario.id.substring(0, 8)}...</code>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div style="margin-bottom: 20px;">
+                                    <h4 style="margin: 0 0 12px 0; font-size: 16px; color: #6c757d;">📍 Dirección</h4>
+                                    <div style="padding: 12px; background: #f8f9fa; border-radius: 6px;">
+                                        ${usuario.direccion ? `
+                                            <p style="margin: 0 0 8px 0;"><strong>Dirección:</strong> ${usuario.direccion}</p>
+                                        ` : ''}
+                                        ${usuario.ciudad ? `
+                                            <p style="margin: 0 0 8px 0;"><strong>Ciudad:</strong> ${usuario.ciudad}</p>
+                                        ` : ''}
+                                        ${usuario.departamento ? `
+                                            <p style="margin: 0;"><strong>Departamento:</strong> ${usuario.departamento}</p>
+                                        ` : ''}
+                                        ${!usuario.direccion && !usuario.ciudad && !usuario.departamento ? 
+                                            '<p style="margin: 0; color: #6c757d;">No hay información de dirección registrada</p>' : ''
+                                        }
+                                    </div>
+                                </div>
+                                
+                                <div style="margin-bottom: 20px;">
+                                    <h4 style="margin: 0 0 12px 0; font-size: 16px; color: #6c757d;">📅 Información de Cuenta</h4>
+                                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
+                                        <div>
+                                            <strong>Fecha de registro:</strong><br>
+                                            ${formatearFechaHora(usuario.createdAt)}
+                                        </div>
+                                        <div>
+                                            <strong>Última actualización:</strong><br>
+                                            ${formatearFechaHora(usuario.updatedAt) || 'No disponible'}
+                                        </div>
+                                        <div>
+                                            <strong>Verificación email:</strong><br>
+                                            ${usuario.emailVerificado ? '✅ Verificado' : '❌ No verificado'}
+                                        </div>
+                                        <div>
+                                            <strong>Teléfono verificado:</strong><br>
+                                            ${usuario.telefonoVerificado ? '✅ Verificado' : '❌ No verificado'}
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                ${usuario.notas || usuario.observaciones ? `
+                                    <div style="margin-bottom: 20px;">
+                                        <h4 style="margin: 0 0 12px 0; font-size: 16px; color: #6c757d;">📝 Notas y Observaciones</h4>
+                                        <div style="padding: 12px; background: #f8f9fa; border-radius: 6px;">
+                                            ${usuario.notas ? `
+                                                <p style="margin: 0 0 8px 0;">
+                                                    <strong>Notas internas:</strong><br>
+                                                    ${usuario.notas}
+                                                </p>
+                                            ` : ''}
+                                            ${usuario.observaciones ? `
+                                                <p style="margin: 0;">
+                                                    <strong>Observaciones:</strong><br>
+                                                    ${usuario.observaciones}
+                                                </p>
+                                            ` : ''}
+                                        </div>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" onclick="cerrarModalDetalleUsuarioAdmin()">Cerrar</button>
+                        <button class="btn btn-primary" onclick="abrirModalEditarUsuario('${usuario.id}')">
+                            ✏️ Editar Usuario
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Eliminar modal anterior si existe
+        const modalAnterior = document.getElementById('modalDetalleUsuarioAdmin');
+        if (modalAnterior) {
+            modalAnterior.remove();
+        }
+
+        // Agregar modal al body
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+    } catch (error) {
+        console.error('Error cargando detalle:', error);
+        mostrarAlerta('Error al cargar los detalles del usuario: ' + error.message, 'danger');
+    }
+}
+
+function cerrarModalDetalleUsuarioAdmin() {
+    const modal = document.getElementById('modalDetalleUsuarioAdmin');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+// Funciones auxiliares para las acciones en el modal
+async function bloquearUsuarioModal(id) {
+    const razon = prompt('¿Por qué deseas bloquear este usuario?');
+    if (!razon) return;
+
+    try {
+        await api.post(`/usuarios/${id}/bloquear?razon=${encodeURIComponent(razon)}`);
+        mostrarAlerta('Usuario bloqueado exitosamente', 'success');
+        cerrarModalDetalleUsuarioAdmin();
+        cargarUsuarios(); // Recargar la lista
+    } catch (error) {
+        console.error('Error:', error);
+        mostrarAlerta('Error al bloquear usuario', 'danger');
+    }
+}
+
+async function desbloquearUsuarioModal(id) {
+    if (!confirm('¿Estás seguro de desbloquear este usuario?')) return;
+
+    try {
+        await api.post(`/usuarios/${id}/desbloquear`);
+        mostrarAlerta('Usuario desbloqueado exitosamente', 'success');
+        cerrarModalDetalleUsuarioAdmin();
+        cargarUsuarios(); // Recargar la lista
+    } catch (error) {
+        console.error('Error:', error);
+        mostrarAlerta('Error al desbloquear usuario', 'danger');
+    }
+}
+
+function enviarNotificacionUsuario(id) {
+    const mensaje = prompt('Escribe el mensaje de notificación:');
+    if (!mensaje) return;
+
+    mostrarAlerta('Función de notificación en desarrollo', 'info');
+    // Aquí implementarías la lógica para enviar notificación
+}
+
+function verHistorialUsuario(id) {
+    mostrarAlerta('Función de historial en desarrollo', 'info');
+}
+
+function abrirModalEditarUsuario(id) {
+    mostrarAlerta('Función de edición en desarrollo', 'info');
 }
 
 async function bloquearUsuario(id) {
@@ -529,12 +827,210 @@ async function verDetalleHerramienta(id) {
         const herramienta = await api.get(`/herramientas/${id}`);
         console.log('Herramienta cargada:', herramienta);
         
-        alert(`Detalle de herramienta:\nNombre: ${herramienta.nombre}\nPrecio: ${formatearMoneda(herramienta.precioBaseDia)}/día\nEstado: ${herramienta.estado}\nProveedor ID: ${herramienta.proveedorId || 'N/A'}`);
-        
+        // Obtener información del proveedor
+        let proveedorInfo = '';
+        if (herramienta.proveedorId) {
+            try {
+                const proveedor = await api.get(`/usuarios/${herramienta.proveedorId}`);
+                proveedorInfo = `
+                    <div style="background: #f8f9fa; padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+                        <h4 style="margin: 0 0 12px 0; font-size: 16px;">👤 Proveedor</h4>
+                        <p style="margin: 0;"><strong>${proveedor.nombre} ${proveedor.apellido}</strong></p>
+                        <p style="margin: 4px 0 0 0; color: #6c757d; font-size: 14px;">
+                            Email: ${proveedor.email}<br>
+                            Score: ${proveedor.score}/100 | Tel: ${proveedor.telefono || 'No disponible'}<br>
+                            Estado: <span class="badge badge-${proveedor.estado === 'ACTIVO' ? 'success' : 'danger'}">${proveedor.estado}</span>
+                        </p>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Error cargando proveedor:', error);
+                proveedorInfo = `
+                    <div style="background: #f8f9fa; padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+                        <h4 style="margin: 0 0 12px 0; font-size: 16px;">👤 Proveedor</h4>
+                        <p style="margin: 0; color: #6c757d;">ID: ${herramienta.proveedorId}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Estadísticas adicionales para admin
+        const estadisticasAdmin = `
+            <div style="background: #e7f3ff; padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+                <h4 style="margin: 0 0 12px 0; font-size: 16px;">📊 Estadísticas</h4>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+                    <div style="text-align: center;">
+                        <div style="font-size: 24px; font-weight: bold; color: #007bff;">${herramienta.totalAlquileres || 0}</div>
+                        <div style="font-size: 12px; color: #6c757d;">Total Alquileres</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 24px; font-weight: bold; color: #28a745;">${herramienta.vistas || 0}</div>
+                        <div style="font-size: 12px; color: #6c757d;">Vistas</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 24px; font-weight: bold; color: #ffc107;">${herramienta.calificacionPromedio || 0}</div>
+                        <div style="font-size: 12px; color: #6c757d;">Calificación</div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const modalHTML = `
+            <div class="modal active" id="modalDetalleHerramientaAdmin">
+                <div class="modal-content" style="max-width: 900px;">
+                    <div class="modal-header">
+                        <h3 class="modal-title">🛠️ Detalle de Herramienta (Admin)</h3>
+                        <button class="modal-close" onclick="cerrarModalDetalleHerramientaAdmin()">✖</button>
+                    </div>
+                    <div class="modal-body">
+                        <div style="display: grid; grid-template-columns: 350px 1fr; gap: 30px;">
+                            <!-- Columna izquierda: Imagen e info básica -->
+                            <div>
+                                <div style="width: 100%; margin-bottom: 15px;">
+                                    ${herramienta.fotos && herramienta.fotos.length > 0 ? 
+                                        `<img src="${herramienta.fotos[0]}" alt="${herramienta.nombre}" 
+                                              style="width: 100%; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);"
+                                              onerror="this.src='https://via.placeholder.com/350x250?text=Sin+Imagen'">` :
+                                        `<div style="width: 100%; height: 250px; background: #f8f9fa; 
+                                                   border-radius: 8px; display: flex; align-items: center; 
+                                                   justify-content: center; color: #6c757d;">
+                                            Sin imagen
+                                        </div>`
+                                    }
+                                </div>
+                                
+                                ${proveedorInfo}
+                                
+                                <div style="background: #fff3cd; padding: 16px; border-radius: 8px;">
+                                    <div style="font-size: 14px; color: #856404; margin-bottom: 8px;">Precio Base</div>
+                                    <div style="font-size: 32px; font-weight: bold; color: #ff8c00;">
+                                        ${formatearMoneda(herramienta.precioBaseDia)}
+                                        <span style="font-size: 16px; font-weight: normal; color: #6c757d;">/día</span>
+                                    </div>
+                                    <div style="font-size: 14px; margin-top: 8px;">
+                                        ${herramienta.envioIncluido ? '📦 Envío incluido' : '🚫 Envío no incluido'} | 
+                                        ${herramienta.estado === 'ACTIVO' ? '✅ Activo' : '⏸️ Pausado'}
+                                    </div>
+                                </div>
+                                
+                                <div style="margin-top: 20px;">
+                                    <h4 style="margin: 0 0 12px 0; font-size: 16px; color: #6c757d;">Acciones Rápidas</h4>
+                                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                        ${herramienta.estado === 'ACTIVO' 
+                                            ? `<button class="btn btn-warning btn-sm" onclick="pausarHerramienta('${herramienta.id}')">⏸️ Pausar</button>`
+                                            : `<button class="btn btn-success btn-sm" onclick="activarHerramienta('${herramienta.id}')">▶️ Activar</button>`
+                                        }
+                                        <button class="btn btn-outline btn-sm" onclick="mostrarHistorialHerramienta('${herramienta.id}')">
+                                            📊 Historial
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Columna derecha: Información detallada -->
+                            <div>
+                                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 20px;">
+                                    <h2 style="margin: 0 0 10px 0; font-size: 28px;">${herramienta.nombre}</h2>
+                                    <div style="display: flex; gap: 8px;">
+                                        <span class="badge badge-${herramienta.estado === 'ACTIVO' ? 'success' : 'warning'}">
+                                            ${herramienta.estado}
+                                        </span>
+                                        <span class="badge badge-info">ID: ${herramienta.id.substring(0, 8)}...</span>
+                                    </div>
+                                </div>
+                                
+                                ${estadisticasAdmin}
+                                
+                                <div style="margin-bottom: 20px;">
+                                    <h4 style="margin: 0 0 12px 0; font-size: 16px; color: #6c757d;">📋 Información General</h4>
+                                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
+                                        <div>
+                                            <strong>Marca/Modelo:</strong><br>
+                                            ${herramienta.marca || 'N/A'} ${herramienta.modelo || ''}
+                                        </div>
+                                        <div>
+                                            <strong>Categoría:</strong><br>
+                                            ${herramienta.categoriaNombre || 'Sin categoría'}
+                                        </div>
+                                        <div>
+                                            <strong>Calificación:</strong><br>
+                                            ⭐ ${herramienta.calificacionPromedio || 0} 
+                                            (${herramienta.totalCalificaciones || 0} reseñas)
+                                        </div>
+                                        <div>
+                                            <strong>Fecha creación:</strong><br>
+                                            ${formatearFechaHora(herramienta.createdAt)}
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div style="margin-bottom: 20px;">
+                                    <h4 style="margin: 0 0 12px 0; font-size: 16px; color: #6c757d;">📝 Descripción</h4>
+                                    <p style="margin: 0; line-height: 1.6; white-space: pre-line; padding: 12px; background: #f8f9fa; border-radius: 6px;">
+                                        ${herramienta.descripcion || 'Sin descripción disponible'}
+                                    </p>
+                                </div>
+                                
+                                ${herramienta.caracteristicas && herramienta.caracteristicas.length > 0 ? `
+                                    <div style="margin-bottom: 20px;">
+                                        <h4 style="margin: 0 0 12px 0; font-size: 16px; color: #6c757d;">🔧 Características</h4>
+                                        <ul style="margin: 0; padding-left: 20px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
+                                            ${herramienta.caracteristicas.map(c => `<li>${c}</li>`).join('')}
+                                        </ul>
+                                    </div>
+                                ` : ''}
+                                
+                                ${herramienta.condicionesUso ? `
+                                    <div style="margin-bottom: 20px;">
+                                        <h4 style="margin: 0 0 12px 0; font-size: 16px; color: #6c757d;">⚠️ Condiciones de Uso</h4>
+                                        <p style="margin: 0; line-height: 1.6; white-space: pre-line; padding: 12px; background: #fff3cd; border-radius: 6px;">
+                                            ${herramienta.condicionesUso}
+                                        </p>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" onclick="cerrarModalDetalleHerramientaAdmin()">Cerrar</button>
+                        <button class="btn btn-primary" onclick="abrirModalEditarHerramienta('${herramienta.id}')">
+                            ✏️ Editar Herramienta
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Eliminar modal anterior si existe
+        const modalAnterior = document.getElementById('modalDetalleHerramientaAdmin');
+        if (modalAnterior) {
+            modalAnterior.remove();
+        }
+
+        // Agregar modal al body
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+
     } catch (error) {
         console.error('Error cargando detalle:', error);
         mostrarAlerta('Error al cargar los detalles: ' + error.message, 'danger');
     }
+}
+
+function cerrarModalDetalleHerramientaAdmin() {
+    const modal = document.getElementById('modalDetalleHerramientaAdmin');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+// Función auxiliar para mostrar historial (placeholder)
+function mostrarHistorialHerramienta(herramientaId) {
+    mostrarAlerta('Función de historial en desarrollo', 'info');
+}
+
+// Función auxiliar para editar herramienta (placeholder)
+function abrirModalEditarHerramienta(herramientaId) {
+    mostrarAlerta('Función de edición en desarrollo', 'info');
 }
 
 async function pausarHerramienta(id) {

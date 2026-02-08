@@ -1,10 +1,7 @@
 package com.rentaherramientas.infrastructure.config;
 
 import com.rentaherramientas.application.services.*;
-import com.rentaherramientas.domain.ports.in.DetalleReservaUseCase;
-import com.rentaherramientas.domain.ports.in.DireccionEnvioUseCase;
-import com.rentaherramientas.domain.ports.in.HerramientaUseCase;
-import com.rentaherramientas.domain.ports.in.ReservaUseCase;
+import com.rentaherramientas.domain.ports.in.*;
 import com.rentaherramientas.domain.ports.out.*;
 import com.rentaherramientas.infrastructure.adapters.out.persistence.mapper.DetalleReservaMapper;
 import com.rentaherramientas.infrastructure.adapters.out.persistence.mapper.DireccionEnvioMapper;
@@ -16,6 +13,10 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+/**
+ * Configuración de Beans para Inyección de Dependencias
+ * Arquitectura Hexagonal: Los beans retornan interfaces (Use Cases)
+ */
 @Configuration
 public class BeanConfiguration {
 
@@ -24,16 +25,18 @@ public class BeanConfiguration {
         return new BCryptPasswordEncoder();
     }
 
+    // ========== USUARIO USE CASE ==========
     @Bean
-    public UsuarioService usuarioService(
+    public UsuarioUseCase usuarioUseCase(
             UsuarioRepositoryPort usuarioRepository,
             PasswordEncoder passwordEncoder,
             PerfilProveedorRepositoryPort perfilProveedorRepository) {
         return new UsuarioService(usuarioRepository, passwordEncoder, perfilProveedorRepository);
     }
 
+    // ========== PERFIL PROVEEDOR USE CASE ==========
     @Bean
-    public PerfilProveedorService perfilProveedorService(
+    public PerfilProveedorUseCase perfilProveedorUseCase(
             PerfilProveedorRepositoryPort perfilProveedorRepository) {
         return new PerfilProveedorService(perfilProveedorRepository);
     }
@@ -61,7 +64,7 @@ public class BeanConfiguration {
         return new DetalleReservaService(detalleReservaRepository, detalleReservaMapper);
     }
 
-    // ========== RESERVA USE CASE (CON DEPENDENCIAS ACTUALIZADAS) ==========
+    // ========== RESERVA USE CASE ==========
     @Bean
     public ReservaUseCase reservaUseCase(
             ReservaRepositoryPort reservaRepositoryPort,
@@ -74,22 +77,19 @@ public class BeanConfiguration {
         );
     }
 
-    // ========== PAGO SERVICE ==========
+    // ========== PAGO USE CASE ==========
     @Bean
-    public PagoService pagoService(
+    public PagoUseCase pagoUseCase(
             PagoRepositoryPort pagoRepository,
             ReservaRepositoryPort reservaRepository) {
         return new PagoService(pagoRepository, reservaRepository);
     }
 
-    // ========== FACTURA SERVICE ==========
+    // ========== FACTURA USE CASE ==========
     @Bean
-    public FacturaService facturaService(
+    public FacturaUseCase facturaUseCase(
             FacturaRepositoryPort facturaRepository,
             ReservaRepositoryPort reservaRepository) {
         return new FacturaService(facturaRepository, reservaRepository);
     }
-    
-    // ❌ ELIMINADO - Ya existe con @Service
-    // NO NECESITAS ESTE BEAN porque UsuarioFavoritoService tiene @Service
 }

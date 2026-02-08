@@ -1,5 +1,6 @@
 /**
  * PROVEEDOR DASHBOARD
+ * Integración completa con Perfil de Proveedor
  */
 
 // Verificar autenticación y rol
@@ -13,17 +14,65 @@ if (!localStorage.getItem('token') || userRole !== 'PROVEEDOR') {
 let vistaActual = 'miNegocio';
 let misHerramientas = [];
 let misReservas = [];
+let miPerfilProveedor = null; // ✅ NUEVO: Almacenar perfil
 
 // Inicializar
 document.addEventListener('DOMContentLoaded', () => {
     cargarNombreUsuario();
-    cambiarVista('miNegocio');
+    verificarYCargarPerfil(); // ✅ NUEVO: Verificar perfil primero
 });
 
 function cargarNombreUsuario() {
     const userName = localStorage.getItem('userName') || 'Proveedor';
     document.getElementById('userName').textContent = userName;
     document.getElementById('userAvatar').textContent = userName.charAt(0).toUpperCase();
+}
+
+// ========== ✅ NUEVO: VERIFICAR Y CARGAR PERFIL ==========
+async function verificarYCargarPerfil() {
+    const userId = localStorage.getItem('userId');
+    
+    try {
+        console.log('=== VERIFICANDO PERFIL DE PROVEEDOR ===');
+        console.log('Usuario ID:', userId);
+        
+        // Intentar obtener el perfil
+        const response = await api.get(`/perfiles-proveedor/usuario/${userId}`);
+        
+        if (response && response.id) {
+            miPerfilProveedor = response;
+            console.log('✅ Perfil encontrado:', miPerfilProveedor);
+            
+            // Actualizar nombre en header con nombre comercial
+            if (miPerfilProveedor.nombreComercial) {
+                document.getElementById('userName').textContent = miPerfilProveedor.nombreComercial;
+            }
+            
+            // Cargar vista inicial
+            cambiarVista('miNegocio');
+        }
+        
+    } catch (error) {
+        console.error('❌ Error al verificar perfil:', error);
+        
+        // Si no existe perfil, mostrar advertencia
+        mostrarAdvertenciaSinPerfil();
+    }
+}
+
+function mostrarAdvertenciaSinPerfil() {
+    const mainContent = document.getElementById('mainContent');
+    
+    mainContent.innerHTML = `
+        <div class="alert alert-warning" style="max-width: 600px; margin: 40px auto;">
+            <h3 style="margin: 0 0 16px 0;">⚠️ Perfil Incompleto</h3>
+            <p>No se encontró tu perfil de proveedor. Esto puede deberse a que tu cuenta fue creada antes de que se implementara esta funcionalidad.</p>
+            <p>Por favor, ve a <strong>"Mi Perfil"</strong> en el menú lateral para crear tu perfil de proveedor.</p>
+            <button class="btn btn-primary" onclick="cambiarVista('miPerfil')">
+                ✅ Ir a Mi Perfil
+            </button>
+        </div>
+    `;
 }
 
 function cambiarVista(vista) {
@@ -100,26 +149,23 @@ async function cargarMiNegocio() {
         </div>
     `;
 
+    // ✅ VERIFICAR QUE EXISTA PERFIL
+    if (!miPerfilProveedor) {
+        document.getElementById('kpiGrid').innerHTML = `
+            <div class="alert alert-warning" style="grid-column: 1/-1;">
+                ⚠️ Debes completar tu perfil de proveedor antes de continuar.<br>
+                <button class="btn btn-primary" onclick="cambiarVista('miPerfil')">Ir a Mi Perfil</button>
+            </div>
+        `;
+        return;
+    }
+
     try {
         const userId = localStorage.getItem('userId');
         
-        // Obtener perfil de proveedor primero
-        const perfiles = await api.get('/perfiles-proveedor');
-        const miPerfil = perfiles.find(p => p.usuarioId === userId);
-        
-        if (!miPerfil) {
-            document.getElementById('kpiGrid').innerHTML = `
-                <div class="alert alert-warning" style="grid-column: 1/-1;">
-                    ⚠️ No se encontró tu perfil de proveedor.<br>
-                    Por favor, ve a <strong>"Mi Perfil"</strong> para crear tu perfil.
-                </div>
-            `;
-            return;
-        }
-        
         const [herramientas, reservas] = await Promise.all([
-            api.get(`/herramientas/proveedor/${miPerfil.id}`),
-            api.get(`/reservas/proveedor/${userId}`)
+            api.get(`/herramientas/proveedor/${miPerfilProveedor.id}`), // ✅ USA perfil.id
+            api.get(`/reservas/proveedor/${userId}`) // Usuario ID para reservas
         ]);
 
         const herramientasActivas = herramientas.filter(h => h.estado === 'ACTIVO').length;
@@ -147,8 +193,8 @@ async function cargarMiNegocio() {
             </div>
             <div class="kpi-card" style="background: linear-gradient(135deg, #FF8C00 0%, #E67E00 100%);">
                 <div class="kpi-label">Calificación</div>
-                <div class="kpi-value">⭐ ${miPerfil.calificacionPromedio || 0}</div>
-                <div class="kpi-change">(${miPerfil.totalCalificaciones || 0} reseñas)</div>
+                <div class="kpi-value">⭐ ${miPerfilProveedor.calificacionPromedio || 0}</div>
+                <div class="kpi-change">(${miPerfilProveedor.totalCalificaciones || 0} reseñas)</div>
             </div>
         `;
 
@@ -195,7 +241,7 @@ async function confirmarReserva(id) {
     }
 }
 
-// ==================== MIS HERRAMIENTAS (CORREGIDO) ====================
+// ==================== MIS HERRAMIENTAS ====================
 async function cargarMisHerramientas() {
     const mainContent = document.getElementById('mainContent');
     
@@ -217,26 +263,20 @@ async function cargarMisHerramientas() {
         </div>
     `;
 
+    // ✅ VERIFICAR QUE EXISTA PERFIL
+    if (!miPerfilProveedor) {
+        document.getElementById('misHerramientasGrid').innerHTML = `
+            <div class="alert alert-danger" style="grid-column: 1/-1;">
+                ❌ Debes completar tu perfil de proveedor antes de agregar herramientas.<br>
+                <button class="btn btn-primary" onclick="cambiarVista('miPerfil')">Ir a Mi Perfil</button>
+            </div>
+        `;
+        return;
+    }
+
     try {
-        const userId = localStorage.getItem('userId');
-        
-        // ✅ OBTENER PERFIL_PROVEEDOR_ID PRIMERO
-        const perfiles = await api.get('/perfiles-proveedor');
-        const miPerfil = perfiles.find(p => p.usuarioId === userId);
-        
-        if (!miPerfil) {
-            document.getElementById('misHerramientasGrid').innerHTML = `
-                <div class="alert alert-danger" style="grid-column: 1/-1;">
-                    ❌ No se encontró tu perfil de proveedor en el sistema.<br>
-                    <small>Por favor, ve a <strong>"Mi Perfil"</strong> y crea tu perfil de proveedor.</small>
-                </div>
-            `;
-            return;
-        }
-        
-        // ✅ USAR PERFIL_PROVEEDOR_ID (no usuario_id)
-        console.log('Cargando herramientas para perfil_proveedor_id:', miPerfil.id);
-        misHerramientas = await api.get(`/herramientas/proveedor/${miPerfil.id}`);
+        console.log('Cargando herramientas para perfil_proveedor_id:', miPerfilProveedor.id);
+        misHerramientas = await api.get(`/herramientas/proveedor/${miPerfilProveedor.id}`);
         renderizarMisHerramientas(misHerramientas);
         
     } catch (error) {
@@ -305,7 +345,14 @@ function renderizarMisHerramientas(herramientas) {
 
 // ==================== AGREGAR HERRAMIENTA ====================
 async function mostrarFormAgregarHerramienta() {
-    // Primero cargar las categorías disponibles
+    // ✅ VERIFICAR PERFIL PRIMERO
+    if (!miPerfilProveedor) {
+        alert('❌ Debes completar tu perfil de proveedor antes de agregar herramientas.');
+        cambiarVista('miPerfil');
+        return;
+    }
+
+    // Cargar categorías
     let categoriasOptions = '';
     try {
         const categorias = await api.get('/categorias');
@@ -403,13 +450,11 @@ async function mostrarFormAgregarHerramienta() {
         </div>
     `;
 
-    // Eliminar modal anterior si existe
     const modalAnterior = document.getElementById('modalAgregarHerramienta');
     if (modalAnterior) {
         modalAnterior.remove();
     }
 
-    // Agregar modal al body
     document.body.insertAdjacentHTML('beforeend', modalHTML);
 }
 
@@ -428,78 +473,12 @@ async function guardarNuevaHerramienta() {
         return;
     }
 
-    const userId = localStorage.getItem('userId');
-    
-    // PASO 1: Verificar que el usuario sea PROVEEDOR en la BD
-    try {
-        const usuario = await api.get(`/usuarios/${userId}`);
-        console.log('Usuario verificado:', usuario);
-        
-        if (usuario.tipo !== 'PROVEEDOR') {
-            const alertContainer = document.getElementById('alertContainerHerramienta');
-            if (alertContainer) {
-                alertContainer.innerHTML = `
-                    <div class="alert alert-danger">
-                        ❌ Error: Tu cuenta no está registrada como PROVEEDOR en el sistema.<br>
-                        <small>Tipo de cuenta actual: ${usuario.tipo}</small><br>
-                        <small>Por favor, contacta al administrador para cambiar tu tipo de cuenta.</small>
-                    </div>
-                `;
-            }
-            return;
-        }
-    } catch (error) {
-        console.error('Error verificando usuario:', error);
-        const alertContainer = document.getElementById('alertContainerHerramienta');
-        if (alertContainer) {
-            alertContainer.innerHTML = `
-                <div class="alert alert-danger">
-                    ❌ Error al verificar tu cuenta: ${error.message}<br>
-                    <small>Por favor, intenta nuevamente o contacta al administrador.</small>
-                </div>
-            `;
-        }
+    // ✅ VERIFICAR PERFIL
+    if (!miPerfilProveedor) {
+        alert('❌ Error: No se encontró tu perfil de proveedor.');
         return;
     }
-    
-    // PASO 2: ✅ OBTENER EL PERFIL_PROVEEDOR_ID DEL USUARIO
-    let perfilProveedorId;
-    try {
-        const perfilesProveedor = await api.get('/perfiles-proveedor');
-        const miPerfil = perfilesProveedor.find(p => p.usuarioId === userId);
-        
-        if (!miPerfil) {
-            const alertContainer = document.getElementById('alertContainerHerramienta');
-            if (alertContainer) {
-                alertContainer.innerHTML = `
-                    <div class="alert alert-danger">
-                        ❌ Error: No se encontró tu perfil de proveedor en el sistema.<br>
-                        <small>Aunque tu cuenta es de tipo PROVEEDOR, no existe un registro en la tabla perfiles_proveedor.</small><br>
-                        <small>Por favor, ve a "Mi Perfil" y crea tu perfil de proveedor.</small>
-                    </div>
-                `;
-            }
-            return;
-        }
-        
-        perfilProveedorId = miPerfil.id;
-        console.log('Perfil Proveedor ID:', perfilProveedorId);
-        
-    } catch (error) {
-        console.error('Error obteniendo perfil de proveedor:', error);
-        const alertContainer = document.getElementById('alertContainerHerramienta');
-        if (alertContainer) {
-            alertContainer.innerHTML = `
-                <div class="alert alert-danger">
-                    ❌ Error al obtener tu perfil de proveedor: ${error.message}<br>
-                    <small>Por favor, intenta nuevamente o contacta al administrador.</small>
-                </div>
-            `;
-        }
-        return;
-    }
-    
-    // PASO 3: Construir datos de la herramienta CON EL PERFIL_PROVEEDOR_ID CORRECTO
+
     const datosHerramienta = {
         nombre: document.getElementById('nombreHerramienta').value.trim(),
         categoriaId: document.getElementById('categoriaHerramienta').value,
@@ -508,23 +487,23 @@ async function guardarNuevaHerramienta() {
         modelo: document.getElementById('modeloHerramienta').value.trim() || null,
         descripcion: document.getElementById('descripcionHerramienta').value.trim(),
         envioIncluido: document.getElementById('envioIncluidoHerramienta').checked,
-        garantia: document.getElementById('garantiaHerramienta').checked || false,
-        proveedorId: perfilProveedorId // ✅ USAR EL PERFIL_PROVEEDOR_ID, NO EL USUARIO_ID
+        proveedorId: miPerfilProveedor.id // ✅ USA perfil.id (NO usuario.id)
     };
 
-    // Agregar foto si se proporcionó
     const fotoURL = document.getElementById('fotoHerramienta').value.trim();
     if (fotoURL) {
         datosHerramienta.fotos = [fotoURL];
     }
 
-    console.log('Datos de herramienta a enviar:', datosHerramienta);
+    console.log('=== GUARDAR HERRAMIENTA ===');
+    console.log('Datos:', datosHerramienta);
+    console.log('Perfil Proveedor ID:', miPerfilProveedor.id);
 
     deshabilitarBoton('btnGuardarHerramienta', true);
 
     try {
         const resultado = await api.post('/herramientas', datosHerramienta);
-        console.log('Herramienta creada exitosamente:', resultado);
+        console.log('✅ Herramienta creada:', resultado);
         
         const alertContainer = document.getElementById('alertContainerHerramienta');
         if (alertContainer) {
@@ -541,13 +520,12 @@ async function guardarNuevaHerramienta() {
         }, 1500);
         
     } catch (error) {
-        console.error('Error completo al crear herramienta:', error);
+        console.error('❌ Error:', error);
         const alertContainer = document.getElementById('alertContainerHerramienta');
         if (alertContainer) {
             alertContainer.innerHTML = `
                 <div class="alert alert-danger">
-                    ❌ Error al agregar herramienta: ${error.message}<br>
-                    <small>Detalles: ${JSON.stringify(error)}</small>
+                    ❌ Error: ${error.message}
                 </div>
             `;
         }
@@ -609,7 +587,6 @@ async function cargarReservas() {
 }
 
 function filtrarReservasProveedor(tipo) {
-    // Actualizar tabs
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     event?.target?.classList.add('active');
 
@@ -795,95 +772,15 @@ async function cargarMiPerfil() {
     try {
         const userId = localStorage.getItem('userId');
         
-        // Obtener perfil de proveedor
-        const perfiles = await api.get('/perfiles-proveedor');
-        const miPerfil = perfiles.find(p => p.usuarioId === userId);
-        
-        if (!miPerfil) {
-            // Si no tiene perfil, mostrar opción para crearlo
-            document.getElementById('perfilProveedorCard').innerHTML = `
-                <div class="card-header">⚠️ Perfil Incompleto</div>
-                <div class="card-body">
-                    <div class="alert alert-warning">
-                        <p>No se encontró tu perfil de proveedor. Esto puede deberse a que tu cuenta fue creada antes de que se implementara esta funcionalidad.</p>
-                        <button class="btn btn-primary" onclick="crearPerfilManual()">
-                            ✅ Crear Mi Perfil Ahora
-                        </button>
-                    </div>
-                </div>
-            `;
-            return;
+        // Intentar obtener perfil
+        try {
+            const perfil = await api.get(`/perfiles-proveedor/usuario/${userId}`);
+            miPerfilProveedor = perfil; // ✅ Actualizar variable global
+            mostrarFormularioPerfil(perfil);
+        } catch (error) {
+            // Si no existe, mostrar opción para crearlo
+            mostrarFormularioCrearPerfil();
         }
-
-        // Mostrar formulario de edición
-        document.getElementById('perfilProveedorCard').innerHTML = `
-            <div class="card-header">Información del Negocio</div>
-            <div class="card-body">
-                <div id="alertContainerPerfil"></div>
-                
-                <form id="formEditarPerfil">
-                    <div class="form-group">
-                        <label class="form-label">Nombre Comercial *</label>
-                        <input type="text" class="form-control" id="nombreComercial" 
-                               value="${miPerfil.nombreComercial}" required>
-                        <small style="color: #6c757d;">El nombre con el que aparecerás en la plataforma</small>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Misión</label>
-                        <textarea class="form-control" id="mision" rows="3" 
-                                  placeholder="¿Cuál es el propósito de tu negocio?">${miPerfil.mision || ''}</textarea>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Visión</label>
-                        <textarea class="form-control" id="vision" rows="3" 
-                                  placeholder="¿A dónde quieres llegar con tu negocio?">${miPerfil.vision || ''}</textarea>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">URL del Logo (opcional)</label>
-                        <input type="url" class="form-control" id="logoUrl" 
-                               value="${miPerfil.logoUrl || ''}" 
-                               placeholder="https://ejemplo.com/logo.png">
-                    </div>
-
-                    <div style="background: #f8f9fa; padding: 16px; border-radius: 8px; margin-top: 20px;">
-                        <h5 style="margin: 0 0 12px 0;">📊 Estadísticas</h5>
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px;">
-                            <div>
-                                <strong>Calificación:</strong><br>
-                                ⭐ ${miPerfil.calificacionPromedio || 0} / 5
-                            </div>
-                            <div>
-                                <strong>Reseñas:</strong><br>
-                                ${miPerfil.totalCalificaciones || 0} reseñas
-                            </div>
-                            <div>
-                                <strong>Estado KYC:</strong><br>
-                                <span class="badge badge-${miPerfil.estadoKyc === 'APROBADO' ? 'success' : 'warning'}">
-                                    ${miPerfil.estadoKyc}
-                                </span>
-                            </div>
-                            <div>
-                                <strong>Verificado:</strong><br>
-                                ${miPerfil.verificado ? '✅ Sí' : '❌ No'}
-                            </div>
-                        </div>
-                    </div>
-
-                    <button type="submit" class="btn btn-primary" id="btnGuardarPerfil" style="margin-top: 20px;">
-                        💾 Guardar Cambios
-                    </button>
-                </form>
-            </div>
-        `;
-
-        // Agregar event listener al formulario
-        document.getElementById('formEditarPerfil').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            await guardarPerfilProveedor(miPerfil.id);
-        });
 
     } catch (error) {
         console.error('Error:', error);
@@ -894,6 +791,116 @@ async function cargarMiPerfil() {
                 </div>
             </div>
         `;
+    }
+}
+
+function mostrarFormularioPerfil(perfil) {
+    document.getElementById('perfilProveedorCard').innerHTML = `
+        <div class="card-header">Información del Negocio</div>
+        <div class="card-body">
+            <div id="alertContainerPerfil"></div>
+            
+            <form id="formEditarPerfil">
+                <div class="form-group">
+                    <label class="form-label">Nombre Comercial *</label>
+                    <input type="text" class="form-control" id="nombreComercial" 
+                           value="${perfil.nombreComercial}" required>
+                    <small style="color: #6c757d;">El nombre con el que aparecerás en la plataforma</small>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Misión</label>
+                    <textarea class="form-control" id="mision" rows="3" 
+                              placeholder="¿Cuál es el propósito de tu negocio?">${perfil.mision || ''}</textarea>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Visión</label>
+                    <textarea class="form-control" id="vision" rows="3" 
+                              placeholder="¿A dónde quieres llegar con tu negocio?">${perfil.vision || ''}</textarea>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">URL del Logo (opcional)</label>
+                    <input type="url" class="form-control" id="logoUrl" 
+                           value="${perfil.logoUrl || ''}" 
+                           placeholder="https://ejemplo.com/logo.png">
+                </div>
+
+                <div style="background: #f8f9fa; padding: 16px; border-radius: 8px; margin-top: 20px;">
+                    <h5 style="margin: 0 0 12px 0;">📊 Estadísticas</h5>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px;">
+                        <div>
+                            <strong>Calificación:</strong><br>
+                            ⭐ ${perfil.calificacionPromedio || 0} / 5
+                        </div>
+                        <div>
+                            <strong>Reseñas:</strong><br>
+                            ${perfil.totalCalificaciones || 0} reseñas
+                        </div>
+                        <div>
+                            <strong>Estado KYC:</strong><br>
+                            <span class="badge badge-${perfil.estadoKyc === 'APROBADO' ? 'success' : 'warning'}">
+                                ${perfil.estadoKyc}
+                            </span>
+                        </div>
+                        <div>
+                            <strong>Verificado:</strong><br>
+                            ${perfil.verificado ? '✅ Sí' : '❌ No'}
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary" id="btnGuardarPerfil" style="margin-top: 20px;">
+                    💾 Guardar Cambios
+                </button>
+            </form>
+        </div>
+    `;
+
+    document.getElementById('formEditarPerfil').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await guardarPerfilProveedor(perfil.id);
+    });
+}
+
+function mostrarFormularioCrearPerfil() {
+    document.getElementById('perfilProveedorCard').innerHTML = `
+        <div class="card-header">⚠️ Perfil Incompleto</div>
+        <div class="card-body">
+            <div class="alert alert-warning">
+                <p>No se encontró tu perfil de proveedor. Esto puede deberse a que tu cuenta fue creada antes de que se implementara esta funcionalidad.</p>
+                <button class="btn btn-primary" onclick="crearPerfilManual()">
+                    ✅ Crear Mi Perfil Ahora
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+async function crearPerfilManual() {
+    const userId = localStorage.getItem('userId');
+    const userName = localStorage.getItem('userName');
+    
+    try {
+        const nuevoPerfil = {
+            nombreComercial: userName || 'Mi Negocio',
+            mision: 'Proveedor de herramientas de calidad',
+            vision: 'Ser un proveedor confiable en la plataforma'
+        };
+
+        const resultado = await api.post(`/perfiles-proveedor?usuarioId=${userId}`, nuevoPerfil);
+        miPerfilProveedor = resultado; // ✅ Actualizar variable global
+        
+        mostrarAlerta('✅ Perfil creado exitosamente', 'success');
+        
+        setTimeout(() => {
+            cargarMiPerfil();
+        }, 1500);
+
+    } catch (error) {
+        console.error('Error:', error);
+        mostrarAlerta('Error al crear perfil: ' + error.message, 'danger');
     }
 }
 
@@ -915,6 +922,10 @@ async function guardarPerfilProveedor(perfilId) {
     try {
         await api.put(`/perfiles-proveedor/${perfilId}`, datosActualizados);
         
+        // ✅ Recargar perfil actualizado
+        const perfilActualizado = await api.get(`/perfiles-proveedor/${perfilId}`);
+        miPerfilProveedor = perfilActualizado;
+        
         const alertContainer = document.getElementById('alertContainerPerfil');
         if (alertContainer) {
             alertContainer.innerHTML = `
@@ -924,12 +935,11 @@ async function guardarPerfilProveedor(perfilId) {
             `;
         }
 
-        // Actualizar el nombre en el header
+        // Actualizar nombre en header
         document.getElementById('userName').textContent = datosActualizados.nombreComercial;
 
         deshabilitarBoton('btnGuardarPerfil', false);
 
-        // Ocultar mensaje después de 3 segundos
         setTimeout(() => {
             if (alertContainer) {
                 alertContainer.innerHTML = '';
@@ -950,31 +960,83 @@ async function guardarPerfilProveedor(perfilId) {
     }
 }
 
-// Función para crear perfil manualmente (para usuarios antiguos)
-async function crearPerfilManual() {
-    const userId = localStorage.getItem('userId');
-    const userName = localStorage.getItem('userName');
+// ========== UTILIDADES ==========
+
+function formatearFecha(fecha) {
+    if (!fecha) return '-';
+    const date = new Date(fecha);
+    return date.toLocaleDateString('es-CO', { 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric' 
+    });
+}
+
+function formatearMoneda(valor) {
+    if (!valor) return '$0';
+    return new Intl.NumberFormat('es-CO', {
+        style: 'currency',
+        currency: 'COP',
+        minimumFractionDigits: 0
+    }).format(valor);
+}
+
+function obtenerBadgeEstado(estado, tipo) {
+    const badges = {
+        'PENDIENTE_PAGO': 'badge-warning',
+        'PAGADA': 'badge-info',
+        'CONFIRMADA': 'badge-primary',
+        'ENVIADA': 'badge-info',
+        'ENTREGADA': 'badge-success',
+        'COMPLETADA': 'badge-success',
+        'CANCELADA_CLIENTE': 'badge-danger',
+        'CANCELADA_PROVEEDOR': 'badge-danger',
+        'ACTIVO': 'badge-success',
+        'PAUSADO': 'badge-warning',
+        'ELIMINADO': 'badge-danger'
+    };
     
-    try {
-        const nuevoPerfil = {
-            usuarioId: userId,
-            nombreComercial: userName || 'Mi Negocio',
-            mision: 'Proveedor de herramientas de calidad',
-            vision: 'Ser un proveedor confiable en la plataforma',
-            estadoKyc: 'PENDIENTE',
-            verificado: false
-        };
+    const badgeClass = badges[estado] || 'badge-secondary';
+    return `<span class="badge ${badgeClass}">${estado.replace('_', ' ')}</span>`;
+}
 
-        await api.post('/perfiles-proveedor', nuevoPerfil);
-        mostrarAlerta('✅ Perfil creado exitosamente', 'success');
-        
-        // Recargar la vista
-        setTimeout(() => {
-            cargarMiPerfil();
-        }, 1500);
+function mostrarAlerta(mensaje, tipo) {
+    const alertClass = tipo === 'success' ? 'alert-success' : 
+                      tipo === 'warning' ? 'alert-warning' : 
+                      tipo === 'danger' ? 'alert-danger' : 'alert-info';
+    
+    const alertHTML = `
+        <div class="alert ${alertClass}" style="position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px;">
+            ${mensaje}
+        </div>
+    `;
+    
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = alertHTML;
+    document.body.appendChild(tempDiv.firstElementChild);
+    
+    setTimeout(() => {
+        tempDiv.firstElementChild.remove();
+    }, 3000);
+}
 
-    } catch (error) {
-        console.error('Error:', error);
-        mostrarAlerta('Error al crear perfil: ' + error.message, 'danger');
+function deshabilitarBoton(btnId, disabled) {
+    const btn = document.getElementById(btnId);
+    if (btn) {
+        btn.disabled = disabled;
+        btn.style.opacity = disabled ? '0.6' : '1';
+        btn.style.cursor = disabled ? 'not-allowed' : 'pointer';
     }
+}
+
+function cerrarSesion() {
+    if (confirm('¿Seguro que deseas cerrar sesión?')) {
+        localStorage.clear();
+        window.location.href = '/login.html';
+    }
+}
+
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    sidebar.classList.toggle('active');
 }
