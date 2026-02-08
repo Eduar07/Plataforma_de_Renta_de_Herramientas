@@ -135,6 +135,9 @@ function renderizarGridExplorar(herramientas) {
                     </div>
                 </div>
                 <div class="herramienta-footer">
+                    <button class="btn btn-outline btn-sm" onclick="agregarAFavoritos('${h.id}')">
+                        ❤️
+                    </button>
                     <button class="btn btn-outline btn-sm" onclick="verDetalleHerramientaCliente('${h.id}')">
                         Ver Detalles
                     </button>
@@ -500,7 +503,6 @@ async function calcularCostoReserva() {
     }
 }
 
-// ========== FUNCIÓN ACTUALIZADA CON PROVEEDORID ==========
 async function confirmarReserva() {
     const form = document.getElementById('formCrearReserva');
     
@@ -532,7 +534,7 @@ async function confirmarReserva() {
         const datosReserva = {
             herramientaId: herramientaId,
             clienteId: userId,
-            proveedorId: herramienta.proveedorId, // ✅ AGREGAR ESTE CAMPO
+            proveedorId: herramienta.proveedorId,
             fechaInicio: document.getElementById('fechaInicio').value,
             fechaFin: document.getElementById('fechaFin').value,
             direccionEntrega: document.getElementById('direccionEntrega').value.trim(),
@@ -690,7 +692,7 @@ function renderizarReservasCliente(reservas) {
                         👁️ Ver Detalle
                     </button>
                     ${r.estado === 'PENDIENTE_PAGO' ? `
-                        <button class="btn btn-primary btn-sm">💳 Pagar Ahora</button>
+                        <button class="btn btn-primary btn-sm" onclick="pagarReserva('${r.id}')">💳 Pagar Ahora</button>
                         <button class="btn btn-danger btn-sm" onclick="cancelarReservaCliente('${r.id}')">✖️ Cancelar</button>
                     ` : ''}
                     ${r.estado === 'COMPLETADA' ? `
@@ -702,8 +704,146 @@ function renderizarReservasCliente(reservas) {
     `).join('');
 }
 
-function verDetalleReservaCliente(id) {
-    alert('Modal de detalle de reserva próximamente. ID: ' + id);
+// ==================== DETALLE DE RESERVA (MODAL) ====================
+async function verDetalleReservaCliente(id) {
+    try {
+        const reserva = await api.get(`/reservas/${id}`);
+        const herramienta = await api.get(`/herramientas/${reserva.herramientaId}`);
+        
+        let detalleReserva = null;
+        try {
+            detalleReserva = await api.get(`/detalle-reserva/reserva/${id}`);
+        } catch (error) {
+            console.warn('No se encontró detalle de reserva');
+        }
+
+        const modalHTML = `
+            <div class="modal active" id="modalDetalleReserva">
+                <div class="modal-content" style="max-width: 800px;">
+                    <div class="modal-header">
+                        <h3 class="modal-title">📋 Detalle de Reserva #${reserva.numeroReserva}</h3>
+                        <button class="modal-close" onclick="cerrarModalDetalleReserva()">✖</button>
+                    </div>
+                    <div class="modal-body">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+                            <!-- Columna izquierda -->
+                            <div>
+                                <h4 style="margin: 0 0 15px 0; padding-bottom: 10px; border-bottom: 2px solid #dee2e6;">
+                                    🛠️ Herramienta
+                                </h4>
+                                <div style="margin-bottom: 20px;">
+                                    <img src="${herramienta.fotos && herramienta.fotos[0] || 'https://via.placeholder.com/300x200'}" 
+                                         style="width: 100%; border-radius: 8px; margin-bottom: 10px;"
+                                         onerror="this.src='https://via.placeholder.com/300x200'">
+                                    <p style="margin: 0; font-weight: 600; font-size: 18px;">${herramienta.nombre}</p>
+                                    <p style="margin: 5px 0 0 0; color: #6c757d;">${herramienta.marca || ''} ${herramienta.modelo || ''}</p>
+                                </div>
+
+                                <h4 style="margin: 20px 0 15px 0; padding-bottom: 10px; border-bottom: 2px solid #dee2e6;">
+                                    📅 Fechas
+                                </h4>
+                                <table class="table-details">
+                                    <tr>
+                                        <td>Inicio:</td>
+                                        <td><strong>${formatearFecha(reserva.fechaInicio)}</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Fin:</td>
+                                        <td><strong>${formatearFecha(reserva.fechaFin)}</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Días totales:</td>
+                                        <td><strong>${reserva.diasTotales} día(s)</strong></td>
+                                    </tr>
+                                </table>
+                            </div>
+
+                            <!-- Columna derecha -->
+                            <div>
+                                <h4 style="margin: 0 0 15px 0; padding-bottom: 10px; border-bottom: 2px solid #dee2e6;">
+                                    ℹ️ Estado
+                                </h4>
+                                <div style="margin-bottom: 20px;">
+                                    ${obtenerBadgeEstado(reserva.estado, 'RESERVA')}
+                                </div>
+
+                                <h4 style="margin: 20px 0 15px 0; padding-bottom: 10px; border-bottom: 2px solid #dee2e6;">
+                                    📍 Entrega
+                                </h4>
+                                <table class="table-details">
+                                    <tr>
+                                        <td>Dirección:</td>
+                                        <td>${reserva.direccionEntrega || 'No especificada'}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Ciudad:</td>
+                                        <td>${reserva.ciudadEntrega || 'No especificada'}</td>
+                                    </tr>
+                                    ${reserva.trackingEnvioIda ? `
+                                        <tr>
+                                            <td>Tracking envío:</td>
+                                            <td><code>${reserva.trackingEnvioIda}</code></td>
+                                        </tr>
+                                    ` : ''}
+                                </table>
+
+                                ${detalleReserva ? `
+                                    <h4 style="margin: 20px 0 15px 0; padding-bottom: 10px; border-bottom: 2px solid #dee2e6;">
+                                        💰 Costos
+                                    </h4>
+                                    <table class="table-details">
+                                        <tr>
+                                            <td>Subtotal alquiler:</td>
+                                            <td>${formatearMoneda(detalleReserva.subtotalAlquiler)}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Seguro:</td>
+                                            <td>${formatearMoneda(detalleReserva.costoSeguro)}</td>
+                                        </tr>
+                                        ${detalleReserva.descuento > 0 ? `
+                                            <tr>
+                                                <td>Descuento:</td>
+                                                <td style="color: #28a745;">-${formatearMoneda(detalleReserva.descuento)}</td>
+                                            </tr>
+                                        ` : ''}
+                                        <tr style="border-top: 2px solid #dee2e6;">
+                                            <td><strong>TOTAL PAGADO:</strong></td>
+                                            <td><strong style="color: #ff8c00; font-size: 18px;">${formatearMoneda(detalleReserva.totalPagado)}</strong></td>
+                                        </tr>
+                                    </table>
+                                ` : ''}
+
+                                ${reserva.notasCliente ? `
+                                    <h4 style="margin: 20px 0 10px 0;">📝 Notas</h4>
+                                    <p style="background: #f8f9fa; padding: 12px; border-radius: 6px; font-size: 14px;">
+                                        ${reserva.notasCliente}
+                                    </p>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" onclick="cerrarModalDetalleReserva()">Cerrar</button>
+                        ${reserva.estado === 'PENDIENTE_PAGO' ? `
+                            <button class="btn btn-primary" onclick="cerrarModalDetalleReserva(); pagarReserva('${reserva.id}')">
+                                💳 Proceder al Pago
+                            </button>
+                        ` : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+    } catch (error) {
+        console.error('Error:', error);
+        mostrarAlerta('Error al cargar detalle de reserva', 'danger');
+    }
+}
+
+function cerrarModalDetalleReserva() {
+    const modal = document.getElementById('modalDetalleReserva');
+    if (modal) modal.remove();
 }
 
 async function cancelarReservaCliente(id) {
@@ -721,8 +861,33 @@ async function cancelarReservaCliente(id) {
     }
 }
 
-// ==================== FAVORITOS ====================
-function cargarFavoritos() {
+// ==================== SISTEMA DE FAVORITOS ====================
+async function agregarAFavoritos(herramientaId) {
+    try {
+        const userId = localStorage.getItem('userId');
+        await api.post('/usuarios-favoritos', {
+            usuarioId: userId,
+            herramientaId: herramientaId
+        });
+        mostrarAlerta('✅ Agregado a favoritos', 'success');
+    } catch (error) {
+        console.error('Error:', error);
+        mostrarAlerta('Error al agregar a favoritos', 'danger');
+    }
+}
+
+async function quitarDeFavoritos(favoritoId) {
+    try {
+        await api.delete(`/usuarios-favoritos/${favoritoId}`);
+        mostrarAlerta('❌ Eliminado de favoritos', 'success');
+        cargarFavoritos();
+    } catch (error) {
+        console.error('Error:', error);
+        mostrarAlerta('Error al quitar de favoritos', 'danger');
+    }
+}
+
+async function cargarFavoritos() {
     const mainContent = document.getElementById('mainContent');
     
     mainContent.innerHTML = `
@@ -731,15 +896,219 @@ function cargarFavoritos() {
             <p class="page-subtitle">Herramientas guardadas</p>
         </div>
 
-        <div class="empty-state">
-            <div class="empty-state-icon">❤️</div>
-            <div class="empty-state-title">No tienes favoritos</div>
-            <div class="empty-state-text">Explora herramientas y agrégalas a favoritos</div>
-            <button class="btn btn-primary" onclick="cambiarVista('explorar')">
-                🔍 Explorar Herramientas
-            </button>
+        <div class="herramientas-grid" id="favoritosGrid">
+            <div class="loading" style="grid-column: 1/-1;">
+                <div class="spinner"></div>
+                <p class="loading-text">Cargando favoritos...</p>
+            </div>
         </div>
     `;
+
+    try {
+        const userId = localStorage.getItem('userId');
+        const favoritos = await api.get(`/usuarios-favoritos/usuario/${userId}`);
+        
+        if (favoritos.length === 0) {
+            document.getElementById('favoritosGrid').innerHTML = `
+                <div class="empty-state" style="grid-column: 1/-1;">
+                    <div class="empty-state-icon">❤️</div>
+                    <div class="empty-state-title">No tienes favoritos</div>
+                    <div class="empty-state-text">Explora herramientas y agrégalas a favoritos</div>
+                    <button class="btn btn-primary" onclick="cambiarVista('explorar')">
+                        🔍 Explorar Herramientas
+                    </button>
+                </div>
+            `;
+            return;
+        }
+
+        const herramientasPromises = favoritos.map(f => api.get(`/herramientas/${f.herramientaId}`));
+        const herramientas = await Promise.all(herramientasPromises);
+
+        document.getElementById('favoritosGrid').innerHTML = herramientas.map((h, index) => {
+            const favorito = favoritos[index];
+            const imagen = h.fotos && h.fotos[0] || 'https://via.placeholder.com/300x200';
+            
+            return `
+                <div class="herramienta-card">
+                    <img src="${imagen}" alt="${h.nombre}" class="herramienta-image" 
+                         onerror="this.src='https://via.placeholder.com/300x200'">
+                    <div class="herramienta-body">
+                        <div class="herramienta-title">${h.nombre}</div>
+                        <div class="herramienta-brand">${h.marca || ''} ${h.modelo || ''}</div>
+                        <div class="herramienta-price">
+                            ${formatearMoneda(h.precioBaseDia)}
+                            <span class="herramienta-price-label">/día</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 6px; font-size: 14px; margin-top: 12px;">
+                            <span>⭐ ${h.calificacionPromedio || 0}</span>
+                            <span>(${h.totalCalificaciones || 0})</span>
+                        </div>
+                    </div>
+                    <div class="herramienta-footer">
+                        <button class="btn btn-danger btn-sm" onclick="quitarDeFavoritos('${favorito.id}')">
+                            ❌ Quitar
+                        </button>
+                        <button class="btn btn-primary btn-sm" onclick="iniciarReserva('${h.id}')">
+                            Reservar
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+    } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('favoritosGrid').innerHTML = `
+            <div class="alert alert-danger" style="grid-column: 1/-1;">
+                Error al cargar favoritos
+            </div>
+        `;
+    }
+}
+
+// ==================== MÓDULO DE PAGO ====================
+async function pagarReserva(reservaId) {
+    const modalHTML = `
+        <div class="modal active" id="modalPago">
+            <div class="modal-content" style="max-width: 500px;">
+                <div class="modal-header">
+                    <h3 class="modal-title">💳 Procesar Pago</h3>
+                    <button class="modal-close" onclick="cerrarModalPago()">✖</button>
+                </div>
+                <div class="modal-body">
+                    <div id="alertContainerPago"></div>
+                    
+                    <div style="background: #f8f9fa; padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+                        <p style="margin: 0; color: #6c757d; font-size: 14px;">Reserva:</p>
+                        <p style="margin: 5px 0 0 0; font-size: 18px; font-weight: 600;">
+                            ${reservaId.substring(0, 8)}...
+                        </p>
+                    </div>
+
+                    <form id="formPago">
+                        <input type="hidden" id="reservaIdPago" value="${reservaId}">
+
+                        <div class="form-group">
+                            <label class="form-label">Método de Pago</label>
+                            <select class="form-select" id="metodoPago" required>
+                                <option value="TARJETA_CREDITO">Tarjeta de Crédito</option>
+                                <option value="TARJETA_DEBITO">Tarjeta de Débito</option>
+                                <option value="PSE">PSE</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Número de Tarjeta</label>
+                            <input type="text" class="form-control" id="numeroTarjeta" 
+                                   placeholder="1234 5678 9012 3456" maxlength="19" required>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                            <div class="form-group">
+                                <label class="form-label">Fecha de Expiración</label>
+                                <input type="text" class="form-control" id="fechaExpiracion" 
+                                       placeholder="MM/AA" maxlength="5" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">CVV</label>
+                                <input type="text" class="form-control" id="cvv" 
+                                       placeholder="123" maxlength="4" required>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Nombre del Titular</label>
+                            <input type="text" class="form-control" id="nombreTitular" 
+                                   placeholder="Como aparece en la tarjeta" required>
+                        </div>
+
+                        <div style="background: #fff3cd; padding: 12px; border-radius: 6px; font-size: 13px; margin-top: 20px;">
+                            <strong>⚠️ Nota:</strong> Esta es una simulación de pago para desarrollo. 
+                            En producción se usaría una pasarela real como Wompi o PayU.
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="cerrarModalPago()">Cancelar</button>
+                    <button class="btn btn-primary btn-lg" id="btnProcesarPago" onclick="procesarPago()">
+                        💳 Procesar Pago
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+    // Formatear número de tarjeta automáticamente
+    document.getElementById('numeroTarjeta').addEventListener('input', function(e) {
+        let value = e.target.value.replace(/\s/g, '');
+        let formattedValue = value.match(/.{1,4}/g)?.join(' ') || value;
+        e.target.value = formattedValue;
+    });
+
+    // Formatear fecha de expiración
+    document.getElementById('fechaExpiracion').addEventListener('input', function(e) {
+        let value = e.target.value.replace(/\D/g, '');
+        if (value.length >= 2) {
+            value = value.substring(0, 2) + '/' + value.substring(2, 4);
+        }
+        e.target.value = value;
+    });
+}
+
+function cerrarModalPago() {
+    const modal = document.getElementById('modalPago');
+    if (modal) modal.remove();
+}
+
+async function procesarPago() {
+    const form = document.getElementById('formPago');
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+
+    const reservaId = document.getElementById('reservaIdPago').value;
+
+    deshabilitarBoton('btnProcesarPago', true);
+
+    try {
+        // Simular procesamiento de pago
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        const alertContainer = document.getElementById('alertContainerPago');
+        if (alertContainer) {
+            alertContainer.innerHTML = `
+                <div class="alert alert-success">
+                    ✅ ¡Pago procesado exitosamente!<br>
+                    <small>La reserva ahora está en estado PAGADA</small>
+                </div>
+            `;
+        }
+
+        // Actualizar estado de la reserva a PAGADA
+        await api.patch(`/reservas/${reservaId}/estado?nuevoEstado=PAGADA`);
+
+        setTimeout(() => {
+            cerrarModalPago();
+            cambiarVista('misReservas');
+            mostrarAlerta('💳 Pago procesado exitosamente', 'success');
+        }, 2000);
+
+    } catch (error) {
+        console.error('Error:', error);
+        const alertContainer = document.getElementById('alertContainerPago');
+        if (alertContainer) {
+            alertContainer.innerHTML = `
+                <div class="alert alert-danger">
+                    ❌ Error al procesar el pago: ${error.message}
+                </div>
+            `;
+        }
+        deshabilitarBoton('btnProcesarPago', false);
+    }
 }
 
 // ==================== PERFIL ====================

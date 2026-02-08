@@ -1,10 +1,10 @@
-package com.rentaherramientas.infrastructure.adapters.out.persistence;
+package com.rentaherramientas.infrastructure.adapters.out.persistence.repository;
 
 import com.rentaherramientas.domain.model.PerfilProveedor;
 import com.rentaherramientas.domain.ports.out.PerfilProveedorRepositoryPort;
 import com.rentaherramientas.infrastructure.adapters.out.persistence.entity.PerfilProveedorEntity;
 import com.rentaherramientas.infrastructure.adapters.out.persistence.mapper.PerfilProveedorMapper;
-import com.rentaherramientas.infrastructure.adapters.out.persistence.repository.PerfilProveedorJpaRepository;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 

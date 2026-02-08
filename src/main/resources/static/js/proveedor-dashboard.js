@@ -52,7 +52,7 @@ function cambiarVista(vista) {
         case 'estadisticas':
             cargarEstadisticas();
             break;
-        case 'miPerfil': // ✅ NUEVA OPCIÓN
+        case 'miPerfil':
             cargarMiPerfil();
             break;
     }
@@ -103,14 +103,28 @@ async function cargarMiNegocio() {
     try {
         const userId = localStorage.getItem('userId');
         
+        // Obtener perfil de proveedor primero
+        const perfiles = await api.get('/perfiles-proveedor');
+        const miPerfil = perfiles.find(p => p.usuarioId === userId);
+        
+        if (!miPerfil) {
+            document.getElementById('kpiGrid').innerHTML = `
+                <div class="alert alert-warning" style="grid-column: 1/-1;">
+                    ⚠️ No se encontró tu perfil de proveedor.<br>
+                    Por favor, ve a <strong>"Mi Perfil"</strong> para crear tu perfil.
+                </div>
+            `;
+            return;
+        }
+        
         const [herramientas, reservas] = await Promise.all([
-            api.get(`/herramientas/proveedor/${userId}`),
+            api.get(`/herramientas/proveedor/${miPerfil.id}`),
             api.get(`/reservas/proveedor/${userId}`)
         ]);
 
         const herramientasActivas = herramientas.filter(h => h.estado === 'ACTIVO').length;
         const reservasEsteMes = reservas.filter(r => {
-            const fecha = new Date(r.created_at);
+            const fecha = new Date(r.createdAt);
             const ahora = new Date();
             return fecha.getMonth() === ahora.getMonth() && fecha.getFullYear() === ahora.getFullYear();
         }).length;
@@ -133,8 +147,8 @@ async function cargarMiNegocio() {
             </div>
             <div class="kpi-card" style="background: linear-gradient(135deg, #FF8C00 0%, #E67E00 100%);">
                 <div class="kpi-label">Calificación</div>
-                <div class="kpi-value">⭐ 0.0</div>
-                <div class="kpi-change">(0 reseñas)</div>
+                <div class="kpi-value">⭐ ${miPerfil.calificacionPromedio || 0}</div>
+                <div class="kpi-change">(${miPerfil.totalCalificaciones || 0} reseñas)</div>
             </div>
         `;
 
@@ -181,7 +195,7 @@ async function confirmarReserva(id) {
     }
 }
 
-// ==================== MIS HERRAMIENTAS ====================
+// ==================== MIS HERRAMIENTAS (CORREGIDO) ====================
 async function cargarMisHerramientas() {
     const mainContent = document.getElementById('mainContent');
     
@@ -205,12 +219,32 @@ async function cargarMisHerramientas() {
 
     try {
         const userId = localStorage.getItem('userId');
-        misHerramientas = await api.get(`/herramientas/proveedor/${userId}`);
+        
+        // ✅ OBTENER PERFIL_PROVEEDOR_ID PRIMERO
+        const perfiles = await api.get('/perfiles-proveedor');
+        const miPerfil = perfiles.find(p => p.usuarioId === userId);
+        
+        if (!miPerfil) {
+            document.getElementById('misHerramientasGrid').innerHTML = `
+                <div class="alert alert-danger" style="grid-column: 1/-1;">
+                    ❌ No se encontró tu perfil de proveedor en el sistema.<br>
+                    <small>Por favor, ve a <strong>"Mi Perfil"</strong> y crea tu perfil de proveedor.</small>
+                </div>
+            `;
+            return;
+        }
+        
+        // ✅ USAR PERFIL_PROVEEDOR_ID (no usuario_id)
+        console.log('Cargando herramientas para perfil_proveedor_id:', miPerfil.id);
+        misHerramientas = await api.get(`/herramientas/proveedor/${miPerfil.id}`);
         renderizarMisHerramientas(misHerramientas);
+        
     } catch (error) {
         console.error('Error:', error);
         document.getElementById('misHerramientasGrid').innerHTML = `
-            <div class="alert alert-danger" style="grid-column: 1/-1;">Error al cargar herramientas</div>
+            <div class="alert alert-danger" style="grid-column: 1/-1;">
+                Error al cargar herramientas: ${error.message}
+            </div>
         `;
     }
 }
@@ -386,7 +420,6 @@ function cerrarModalAgregarHerramienta() {
     }
 }
 
-// ========== FUNCIÓN ACTUALIZADA CON PERFIL_PROVEEDOR_ID ==========
 async function guardarNuevaHerramienta() {
     const form = document.getElementById('formAgregarHerramienta');
     
@@ -432,7 +465,6 @@ async function guardarNuevaHerramienta() {
     // PASO 2: ✅ OBTENER EL PERFIL_PROVEEDOR_ID DEL USUARIO
     let perfilProveedorId;
     try {
-        // Buscar el perfil de proveedor asociado a este usuario
         const perfilesProveedor = await api.get('/perfiles-proveedor');
         const miPerfil = perfilesProveedor.find(p => p.usuarioId === userId);
         
@@ -450,7 +482,7 @@ async function guardarNuevaHerramienta() {
             return;
         }
         
-        perfilProveedorId = miPerfil.id; // ✅ ESTE ES EL ID CORRECTO (660e8400...)
+        perfilProveedorId = miPerfil.id;
         console.log('Perfil Proveedor ID:', perfilProveedorId);
         
     } catch (error) {
@@ -470,7 +502,7 @@ async function guardarNuevaHerramienta() {
     // PASO 3: Construir datos de la herramienta CON EL PERFIL_PROVEEDOR_ID CORRECTO
     const datosHerramienta = {
         nombre: document.getElementById('nombreHerramienta').value.trim(),
-        categoriaId: document.getElementById('categoriaHerramienta').value, // Se envía como String, el backend lo convierte
+        categoriaId: document.getElementById('categoriaHerramienta').value,
         precioBaseDia: parseFloat(document.getElementById('precioHerramienta').value),
         marca: document.getElementById('marcaHerramienta').value.trim() || null,
         modelo: document.getElementById('modeloHerramienta').value.trim() || null,
