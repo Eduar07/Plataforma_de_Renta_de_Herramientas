@@ -356,14 +356,11 @@ RentaHerramientas/
 ├── sql/
 │   └── marketplace_herramientas.sql  # Script completo de BD
 │
-├── docs/
-│   ├── DATABASE_SETUP.md            # Guía de configuración BD
-│   ├── SWAGGER_SETUP.md             # Guía de Swagger
-│   ├── JWT_AUTHENTICATION.md        # Guía de autenticación
-│   └── diagrama-er.png              # Diagrama relacional
+├─Diagrama/                 
+│   └── diagrama.png               
 │
-├── pom.xml                          # Dependencias Maven
-├── README.md                        # Este archivo
+├── pom.xml                       
+├── README.md                       
 └── .gitignore
 ```
 
@@ -373,7 +370,7 @@ RentaHerramientas/
 
 ### Diagrama Entidad-Relación
 
-![Diagrama ER](docs/diagrama-er.png)
+![Diagrama](Diagrama/diagrama.png)
 
 ### Tablas Principales
 
