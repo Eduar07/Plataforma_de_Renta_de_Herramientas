@@ -1256,14 +1256,15 @@ docs: actualizar README con instrucciones de despliegue
 
 ## 👨‍💻 Autores
 
-- **Tu Nombre** - *Desarrollo Backend* - [GitHub](https://github.com/tu-usuario)
-- **Nombre Compañero** - *Desarrollo Frontend* - [GitHub](https://github.com/compañero)
+- **Eduar Guerrero** - *Desarrollo Backend y Frontend* - [GitHub](https://github.com/Eduar07)
+- **Adrian Bayona** - *Desarrollo Backend y Frontend* - [GitHub](https://github.com/Bayona325)
+- **Andres Perea** - *Desarrollo Backend y Frontend* - [GitHub](https://github.com/andres1104130678perea)
 
 ---
 
 ## 📄 Licencia
 
-Este proyecto es un trabajo académico para [Nombre de la Universidad/Institución].
+Este proyecto es un trabajo académico para Campuslands.
 
 ---
 
@@ -1272,7 +1273,7 @@ Este proyecto es un trabajo académico para [Nombre de la Universidad/Instituci�
 - Spring Boot Documentation
 - Baeldung Tutorials
 - Stack Overflow Community
-- [Nombre del Instructor/Profesor]
+- Johlver Pardo
 
 ---
 
@@ -1283,7 +1284,7 @@ Si tienes problemas o preguntas:
 1. **Revisa la documentación** en la carpeta `docs/`
 2. **Verifica los logs** en `logs/application.log`
 3. **Abre un issue** en GitHub
-4. **Contacta al equipo**: tu-email@example.com
+4. **Contacta al equipo**: adrianbayona325@gmail.com
 
 ---
 
