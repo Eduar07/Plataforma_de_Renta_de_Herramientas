@@ -17,6 +17,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.stream.Collectors;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+
 
 /**
  * Controlador REST: Herramienta
@@ -41,6 +44,16 @@ public class HerramientaController {
         return ResponseEntity.ok(ApiResponse.success(herramientas));
     }
     
+    @GetMapping("/search")
+    @Operation(summary = "Buscar herramienta por nombre (insensible a mayúsculas/minúsculas)")
+    public ResponseEntity<ApiResponse<List<HerramientaResponse>>> buscarPorNombre(@RequestParam String nombre) {
+        List<HerramientaResponse> herramientas = herramientaService.buscarHerramientasPorNombre(nombre).stream()
+                .map(this::mapearHerramientaResponse)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(ApiResponse.success(herramientas));
+    }
+    
+
     @GetMapping("/{id}")
     @Operation(summary = "Obtener herramienta por ID (público)")
     public ResponseEntity<ApiResponse<HerramientaResponse>> obtenerHerramienta(@PathVariable String id) {

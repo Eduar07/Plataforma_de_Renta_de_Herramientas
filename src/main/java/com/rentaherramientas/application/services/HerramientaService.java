@@ -102,6 +102,16 @@ public class HerramientaService implements HerramientaUseCase {
             throw new ValidationException("Estado inválido: " + estado + ". Valores permitidos: ACTIVO, PAUSADO, ELIMINADO");
         }
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Herramienta> buscarHerramientasPorNombre(String nombre) {
+        String termino = nombre == null ? "" : nombre.trim();
+        if (termino.isEmpty()) {
+            return herramientaRepository.findAll();
+        }
+        return herramientaRepository.findByNombreContainingIgnoreCase(termino);
+    }
     
     @Override
     @Transactional(readOnly = true)

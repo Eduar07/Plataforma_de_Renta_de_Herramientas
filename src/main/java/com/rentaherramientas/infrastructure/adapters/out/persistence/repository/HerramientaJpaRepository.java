@@ -9,6 +9,8 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.math.BigDecimal;
+
 
 /**
  * Repositorio JPA: Herramienta
@@ -24,6 +26,8 @@ public interface HerramientaJpaRepository extends JpaRepository<HerramientaEntit
     
     // ✅ ESTE MÉTODO YA EXISTE - NO MODIFICAR
     List<HerramientaEntity> findByEstado(EstadoHerramienta estado);
+
+    List<HerramientaEntity> findByNombreContainingIgnoreCase(String nombre);
     
     @Query("SELECT h FROM HerramientaEntity h WHERE " +
            "LOWER(h.nombre) LIKE LOWER(CONCAT('%', :termino, '%')) OR " +

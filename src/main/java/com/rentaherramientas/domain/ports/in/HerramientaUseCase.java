@@ -25,6 +25,8 @@ public interface HerramientaUseCase {
     // ========== MÉTODO AGREGADO ==========
     List<Herramienta> listarHerramientasPorEstado(String estado);
     
+    List<Herramienta> buscarHerramientasPorNombre(String nombre);
+
     List<Herramienta> buscarHerramientas(String termino);
     
     void eliminarHerramienta(String id);
