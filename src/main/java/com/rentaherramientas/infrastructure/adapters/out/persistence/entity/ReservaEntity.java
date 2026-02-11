@@ -1,5 +1,6 @@
 package com.rentaherramientas.infrastructure.adapters.out.persistence.entity;
 
+import com.rentaherramientas.domain.model.enums.EstadoDevolucion;
 import com.rentaherramientas.domain.model.enums.EstadoReserva;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -13,6 +14,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * Entidad JPA: Reserva
@@ -112,4 +114,15 @@ public class ReservaEntity {
     @LastModifiedDate
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+    @Enumerated(EnumType.STRING)
+@Column(nullable = false)
+
+private EstadoDevolucion estadoDevolucion = EstadoDevolucion.PENDIENTE_DEVOLUCION;
+
+@OneToMany(mappedBy = "reserva", cascade = CascadeType.ALL)
+private List<ReporteDano> reportesDano;
+
+
+
+
 }
