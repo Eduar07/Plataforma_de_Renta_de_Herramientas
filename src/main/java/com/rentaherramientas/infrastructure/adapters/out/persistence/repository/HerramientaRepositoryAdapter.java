@@ -68,7 +68,16 @@ public class HerramientaRepositoryAdapter implements HerramientaRepositoryPort {
                 .map(mapper::toDomain)
                 .collect(Collectors.toList());
     }
+
+    @Override
+    public List<Herramienta> findByNombreContainingIgnoreCase(String nombre) {
+        return jpaRepository.findByNombreContainingIgnoreCase(nombre).stream()
+                .map(mapper::toDomain)
+                .collect(Collectors.toList());
+    }
     
+
+   
     @Override
     public List<Herramienta> searchByNombreOrMarcaOrModelo(String termino) {
         return jpaRepository.searchByNombreOrMarcaOrModelo(termino).stream()

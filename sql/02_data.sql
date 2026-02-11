@@ -64,13 +64,14 @@ INSERT INTO caracteristicas (id, nombre, tipo, descripcion, activa) VALUES
 
 -- ============================================
 -- 8. HERRAMIENTAS
--- ============================================
+-- ============================================Se
 INSERT INTO herramientas (id, proveedor_id, categoria_id, nombre, marca, modelo, sku, descripcion, fotos, precio_base_dia, envio_incluido, dias_minimo_alquiler, dias_maximo_alquiler, deposito_seguridad, estado, calificacion_promedio, total_calificaciones, total_alquileres) VALUES
 ('990e8400-e29b-41d4-a716-446655440001', '660e8400-e29b-41d4-a716-446655440001', '880e8400-e29b-41d4-a716-446655440001', 'Taladro Percutor Profesional', 'DeWalt', 'DWD520K', 'TAL-001', 'Taladro percutor de 1/2" con control de velocidad variable', '["taladro1.jpg","taladro2.jpg"]', 25000.00, TRUE, 1, 30, 150000.00, 'ACTIVO', 4.7, 45, 78),
 ('990e8400-e29b-41d4-a716-446655440002', '660e8400-e29b-41d4-a716-446655440001', '880e8400-e29b-41d4-a716-446655440001', 'Mezcladora de Concreto', 'Truper', 'MZ-180', 'MEZ-001', 'Mezcladora de concreto 180 litros gasolina', '["mezcladora1.jpg"]', 80000.00, FALSE, 2, 15, 500000.00, 'ACTIVO', 4.9, 23, 34),
 ('990e8400-e29b-41d4-a716-446655440003', '660e8400-e29b-41d4-a716-446655440002', '880e8400-e29b-41d4-a716-446655440002', 'Sierra Circular de Mesa', 'Bosch', 'GTS 10J', 'SIE-001', 'Sierra de mesa profesional con guía de precisión', '["sierra1.jpg","sierra2.jpg"]', 45000.00, TRUE, 1, 20, 300000.00, 'ACTIVO', 4.8, 32, 56),
 ('990e8400-e29b-41d4-a716-446655440004', '660e8400-e29b-41d4-a716-446655440002', '880e8400-e29b-41d4-a716-446655440003', 'Cortadora de Césped', 'Honda', 'HRX217VKA', 'COR-001', 'Cortadora autopropulsada 21" con bolsa recolectora', '["cortadora1.jpg"]', 35000.00, TRUE, 1, 10, 200000.00, 'ACTIVO', 4.6, 18, 29),
 ('990e8400-e29b-41d4-a716-446655440005', '660e8400-e29b-41d4-a716-446655440001', '880e8400-e29b-41d4-a716-446655440005', 'Compresor de Aire', 'Campbell Hausfeld', 'DC080500', 'COM-001', 'Compresor portátil 8 galones 150 PSI', '["compresor1.jpg","compresor2.jpg"]', 40000.00, TRUE, 1, 25, 250000.00, 'ACTIVO', 4.7, 27, 41);
+('990e8400-e29b-41d4-a716-446655440006', '660e8400-e29b-41d4-a716-446655440001', '880e8400-e29b-41d4-a716-446655440001', 'Taladro Electrico de mayor potencia', 'DeWalt', 'DWD520K', 'TAL-008', 'Taladro Electrico con una mayor potencia', '["taladro1.jpg","taladro2.jpg"]', 25000.00, TRUE, 1, 30, 150000.00, 'ACTIVO', 4.2, 48, 79);
 
 -- ============================================
 -- 9. INSTANCIAS DE HERRAMIENTAS

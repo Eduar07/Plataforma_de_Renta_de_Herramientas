@@ -22,10 +22,12 @@ public interface HerramientaUseCase {
     
     List<Herramienta> listarHerramientasPorCategoria(String categoriaId);
     
-    // ========== MÉTODO AGREGADO ==========
+    // ========== En esta seccion se agrega el metodo, con el fin de buscarHerramientasPorNombre ==========
     List<Herramienta> listarHerramientasPorEstado(String estado);
     
-    List<Herramienta> buscarHerramientas(String termino);
+    List<Herramienta> buscarHerramientasPorNombre(String nombre);
+
+    List<Herramienta> buscarHerramientas(String termino);  
     
     void eliminarHerramienta(String id);
     

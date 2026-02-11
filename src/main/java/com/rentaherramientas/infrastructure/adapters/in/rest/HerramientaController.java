@@ -1,3 +1,4 @@
+
 package com.rentaherramientas.infrastructure.adapters.in.rest;
 
 import com.rentaherramientas.application.dto.request.HerramientaRequest;
@@ -40,6 +41,19 @@ public class HerramientaController {
         
         return ResponseEntity.ok(ApiResponse.success(herramientas));
     }
+
+ /* Se crea un Endpoint para swagger con el fin de buscar herramientas por nombres*/
+
+    @GetMapping("/search")
+    @Operation(summary = "Buscar herramientas por nombre")
+    public ResponseEntity<ApiResponse<List<HerramientaResponse>>> buscarPorNombre(@RequestParam String nombre) {
+        List<HerramientaResponse> herramientas = herramientaService.buscarHerramientasPorNombre(nombre).stream()
+                .map(this::mapearHerramientaResponse)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(ApiResponse.success(herramientas));
+    }
+
     
     @GetMapping("/{id}")
     @Operation(summary = "Obtener herramienta por ID (público)")
@@ -318,3 +332,4 @@ public class HerramientaController {
                 .build();
     }
 }
+

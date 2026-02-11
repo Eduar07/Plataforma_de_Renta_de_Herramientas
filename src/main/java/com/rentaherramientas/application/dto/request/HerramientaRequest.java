@@ -59,3 +59,4 @@ public class HerramientaRequest {
     @Pattern(regexp = "ACTIVO|PAUSADO|ELIMINADO", message = "Estado inválido")
     private String estado;
 }
+

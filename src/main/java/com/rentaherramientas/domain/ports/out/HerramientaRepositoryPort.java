@@ -25,6 +25,10 @@ public interface HerramientaRepositoryPort {
     
     // ✅ ESTE MÉTODO YA EXISTE - PERFECTO
     List<Herramienta> findByEstado(EstadoHerramienta estado);
+
+    /*Aqui ajustamos */
+
+    List<Herramienta> findByNombreContainingIgnoreCase(String nombre);
     
     List<Herramienta> searchByNombreOrMarcaOrModelo(String termino);
     

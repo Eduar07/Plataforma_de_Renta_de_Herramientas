@@ -23,7 +23,12 @@ public interface HerramientaJpaRepository extends JpaRepository<HerramientaEntit
     List<HerramientaEntity> findByCategoriaId(String categoriaId);
     
     // ✅ ESTE MÉTODO YA EXISTE - NO MODIFICAR
+
+    /*En esta seccion agregamos el metodo para ignorar el nombre */
     List<HerramientaEntity> findByEstado(EstadoHerramienta estado);
+
+    List<HerramientaEntity> findByNombreContainingIgnoreCase(String nombre);
+
     
     @Query("SELECT h FROM HerramientaEntity h WHERE " +
            "LOWER(h.nombre) LIKE LOWER(CONCAT('%', :termino, '%')) OR " +
