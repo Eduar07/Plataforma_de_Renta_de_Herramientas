@@ -6,11 +6,13 @@ import com.rentaherramientas.domain.exceptions.ValidationException;
 import com.rentaherramientas.domain.model.DetalleReserva;
 import com.rentaherramientas.domain.model.Herramienta;
 import com.rentaherramientas.domain.model.Reserva;
+import com.rentaherramientas.domain.model.VerificacionDevolucion;
 import com.rentaherramientas.domain.model.enums.EstadoReserva;
 import com.rentaherramientas.domain.ports.in.DetalleReservaUseCase;
 import com.rentaherramientas.domain.ports.in.HerramientaUseCase;
 import com.rentaherramientas.domain.ports.in.ReservaUseCase;
 import com.rentaherramientas.domain.ports.out.ReservaRepositoryPort;
+import com.rentaherramientas.domain.ports.out.VerificacionDevolucionRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,6 +36,7 @@ public class ReservaService implements ReservaUseCase {
     private final ReservaRepositoryPort reservaRepository;
     private final HerramientaUseCase herramientaService;
     private final DetalleReservaUseCase detalleReservaService;
+    private final VerificacionDevolucionRepositoryPort verificacionDevolucionRepository;
     
     @Override
     public Reserva crearReserva(Reserva reserva) {
@@ -278,6 +281,144 @@ public class ReservaService implements ReservaUseCase {
         System.out.println("✅ Estado actualizado exitosamente");
         
         return actualizada;
+    }
+
+    @Override
+    public Reserva completarDevolucion(
+            String reservaId,
+            String proveedorId,
+            Boolean reportarDanos,
+            String estadoHerramienta,
+            String descripcion,
+            List<String> fotos,
+            BigDecimal costoReparacionEstimado) {
+        Reserva reserva = obtenerReservaPorId(reservaId)
+                .orElseThrow(() -> new ResourceNotFoundException("Reserva", "id", reservaId));
+
+        if (!reserva.getProveedorId().equals(proveedorId)) {
+            throw new BusinessException("No puedes completar la devolucion de una reserva de otro proveedor");
+        }
+
+        if (reserva.getEstado() == EstadoReserva.COMPLETADA) {
+            throw new BusinessException("La reserva ya fue completada");
+        }
+
+        if (reserva.getEstado() != EstadoReserva.EN_USO &&
+                reserva.getEstado() != EstadoReserva.ENTREGADA &&
+                reserva.getEstado() != EstadoReserva.DEVUELTA) {
+            throw new BusinessException("Solo se puede completar devolucion para reservas en estado ENTREGADA o EN_USO");
+        }
+
+        boolean crearReporteDanos = Boolean.TRUE.equals(reportarDanos);
+        if (crearReporteDanos) {
+            if (estadoHerramienta == null || estadoHerramienta.isBlank()) {
+                throw new ValidationException("Debe especificar el estado de la herramienta para reportar danos");
+            }
+
+            String estadoNormalizado = estadoHerramienta.trim().toUpperCase();
+            if (!estadoNormalizado.equals("DANADO") &&
+                    !estadoNormalizado.equals("PERDIDO") &&
+                    !estadoNormalizado.equals("ROBADO")) {
+                throw new ValidationException("Para reporte de danos el estado debe ser DANADO, PERDIDO o ROBADO");
+            }
+
+            VerificacionDevolucion verificacion = verificacionDevolucionRepository.findByReservaId(reservaId)
+                    .orElse(VerificacionDevolucion.builder().reservaId(reservaId).build());
+            verificacion.setTipo("RECEPCION_PROVEEDOR");
+            verificacion.setEstadoHerramienta(estadoNormalizado);
+            verificacion.setDescripcion(descripcion);
+            verificacion.setFotos(fotos);
+            verificacion.setCostoReparacionEstimado(costoReparacionEstimado != null ? costoReparacionEstimado : BigDecimal.ZERO);
+            verificacionDevolucionRepository.save(verificacion);
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        reserva.setFechaDevolucionReal(now);
+        reserva.setFechaCompletada(now);
+        reserva.setEstado(EstadoReserva.COMPLETADA);
+
+        return reservaRepository.save(reserva);
+    }
+
+    @Override
+    public Reserva solicitarDevolucionCliente(
+            String reservaId,
+            String clienteId,
+            Boolean cancelarAlProveedor,
+            String motivo,
+            Boolean reportarDanos,
+            String estadoHerramienta,
+            String descripcion,
+            List<String> fotos,
+            BigDecimal costoReparacionEstimado) {
+        Reserva reserva = obtenerReservaPorId(reservaId)
+                .orElseThrow(() -> new ResourceNotFoundException("Reserva", "id", reservaId));
+
+        if (!reserva.getClienteId().equals(clienteId)) {
+            throw new BusinessException("No puedes gestionar la devolucion de una reserva que no te pertenece");
+        }
+
+        if (reserva.getEstado() == EstadoReserva.COMPLETADA) {
+            throw new BusinessException("La reserva ya fue completada");
+        }
+
+        boolean esCancelacion = Boolean.TRUE.equals(cancelarAlProveedor);
+        if (esCancelacion) {
+            if (!reserva.puedeCancelarse()) {
+                throw new BusinessException("La reserva no puede cancelarse en su estado actual");
+            }
+            reserva.setEstado(EstadoReserva.CANCELADA_CLIENTE);
+            reserva.setMotivoCancelacion(motivo != null ? motivo : "Cancelacion solicitada por cliente");
+            reserva.setCanceladoPor(clienteId);
+            reserva.setFechaCancelacion(LocalDateTime.now());
+            return reservaRepository.save(reserva);
+        }
+
+        if (reserva.getEstado() != EstadoReserva.ENTREGADA &&
+                reserva.getEstado() != EstadoReserva.EN_USO &&
+                reserva.getEstado() != EstadoReserva.DEVUELTA) {
+            throw new BusinessException("Solo puedes solicitar devolucion cuando la reserva esta ENTREGADA o EN_USO");
+        }
+
+        boolean crearReporteDanos = Boolean.TRUE.equals(reportarDanos);
+        if (crearReporteDanos) {
+            if (estadoHerramienta == null || estadoHerramienta.isBlank()) {
+                throw new ValidationException("Debe especificar el estado de la herramienta para reportar danos");
+            }
+            String estadoNormalizado = estadoHerramienta.trim().toUpperCase();
+            if (!estadoNormalizado.equals("DANADO") &&
+                    !estadoNormalizado.equals("PERDIDO") &&
+                    !estadoNormalizado.equals("ROBADO") &&
+                    !estadoNormalizado.equals("BUENO") &&
+                    !estadoNormalizado.equals("PERFECTO")) {
+                throw new ValidationException("Estado de herramienta invalido para devolucion");
+            }
+
+            VerificacionDevolucion verificacion = verificacionDevolucionRepository.findByReservaId(reservaId)
+                    .orElse(VerificacionDevolucion.builder().reservaId(reservaId).build());
+            verificacion.setTipo("ENVIO_CLIENTE");
+            verificacion.setEstadoHerramienta(estadoNormalizado);
+            verificacion.setDescripcion(descripcion != null ? descripcion : motivo);
+            verificacion.setFotos(fotos);
+            verificacion.setCostoReparacionEstimado(costoReparacionEstimado != null ? costoReparacionEstimado : BigDecimal.ZERO);
+            verificacionDevolucionRepository.save(verificacion);
+        }
+
+        reserva.setEstado(EstadoReserva.DEVUELTA);
+        reserva.setFechaDevolucionReal(LocalDateTime.now());
+
+        if (motivo != null && !motivo.isBlank()) {
+            String notasActuales = reserva.getNotasCliente() == null ? "" : reserva.getNotasCliente() + "\n";
+            reserva.setNotasCliente(notasActuales + "Solicitud devolucion cliente: " + motivo);
+        }
+
+        return reservaRepository.save(reserva);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<VerificacionDevolucion> obtenerVerificacionDevolucion(String reservaId) {
+        return verificacionDevolucionRepository.findByReservaId(reservaId);
     }
     
     @Override

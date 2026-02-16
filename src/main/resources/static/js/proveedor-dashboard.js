@@ -165,7 +165,7 @@ async function cargarMiNegocio() {
         
         const [herramientas, reservas] = await Promise.all([
             api.get(`/herramientas/proveedor/${miPerfilProveedor.id}`), // ✅ USA perfil.id
-            api.get(`/reservas/proveedor/${userId}`) // Usuario ID para reservas
+            api.get(`/reservas/proveedor/${miPerfilProveedor.id}`) // Reservas por perfil_proveedor_id
         ]);
 
         const herramientasActivas = herramientas.filter(h => h.estado === 'ACTIVO').length;
@@ -561,8 +561,9 @@ async function cargarReservas() {
         </div>
 
         <div class="tabs">
-            <div class="tab active" onclick="filtrarReservasProveedor('nuevas')">Nuevas (PAGADA)</div>
+            <div class="tab active" onclick="filtrarReservasProveedor('pagadas')">Pagadas</div>
             <div class="tab" onclick="filtrarReservasProveedor('activas')">Activas</div>
+            <div class="tab" onclick="filtrarReservasProveedor('devoluciones')">Devoluciones</div>
             <div class="tab" onclick="filtrarReservasProveedor('completadas')">Completadas</div>
         </div>
 
@@ -575,9 +576,15 @@ async function cargarReservas() {
     `;
 
     try {
-        const userId = localStorage.getItem('userId');
-        misReservas = await api.get(`/reservas/proveedor/${userId}`);
-        filtrarReservasProveedor('nuevas');
+        if (!miPerfilProveedor || !miPerfilProveedor.id) {
+            document.getElementById('reservasProveedorContent').innerHTML = `
+                <div class="alert alert-warning">Debes completar tu perfil de proveedor para ver reservas.</div>
+            `;
+            return;
+        }
+
+        misReservas = await api.get(`/reservas/proveedor/${miPerfilProveedor.id}`);
+        filtrarReservasProveedor('pagadas');
     } catch (error) {
         console.error('Error:', error);
         document.getElementById('reservasProveedorContent').innerHTML = `
@@ -593,13 +600,16 @@ function filtrarReservasProveedor(tipo) {
     let filtered = [];
     
     switch(tipo) {
-        case 'nuevas':
+        case 'pagadas':
             filtered = misReservas.filter(r => r.estado === 'PAGADA');
             break;
         case 'activas':
             filtered = misReservas.filter(r => 
                 ['CONFIRMADA', 'EN_PREPARACION', 'ENVIADA', 'ENTREGADA', 'EN_USO'].includes(r.estado)
             );
+            break;
+        case 'devoluciones':
+            filtered = misReservas.filter(r => ['DEVUELTA', 'COMPLETADA'].includes(r.estado));
             break;
         case 'completadas':
             filtered = misReservas.filter(r => r.estado === 'COMPLETADA');
@@ -646,6 +656,12 @@ function renderizarReservasProveedor(reservas) {
                     </div>
                 </div>
 
+                ${r.estado === 'DEVUELTA' ? `
+                    <div class="alert alert-info" style="margin-bottom: 16px;">
+                        El cliente marcó esta reserva como devuelta. Revisa reporte de daños si aplica y completa la devolución.
+                    </div>
+                ` : ''}
+
                 <div style="display: flex; gap: 12px; flex-wrap: wrap;">
                     ${r.estado === 'PAGADA' ? `
                         <button class="btn btn-primary btn-sm" onclick="confirmarReserva('${r.id}')">
@@ -655,6 +671,21 @@ function renderizarReservasProveedor(reservas) {
                     ${r.estado === 'CONFIRMADA' ? `
                         <button class="btn btn-primary btn-sm" onclick="marcarComoEnviada('${r.id}')">
                             📦 Marcar como Enviada
+                        </button>
+                    ` : ''}
+                    ${r.estado === 'ENVIADA' ? `
+                        <button class="btn btn-primary btn-sm" onclick="marcarComoEntregada('${r.id}')">
+                            📬 Marcar como Entregada
+                        </button>
+                    ` : ''}
+                    ${['ENTREGADA', 'EN_USO', 'DEVUELTA'].includes(r.estado) ? `
+                        <button class="btn btn-success btn-sm" onclick="abrirFlujoDevolucion('${r.id}')">
+                            ↩️ Completar Devolución
+                        </button>
+                    ` : ''}
+                    ${['DEVUELTA', 'COMPLETADA'].includes(r.estado) ? `
+                        <button class="btn btn-warning btn-sm" onclick="verReporteDevolucionProveedor('${r.id}')">
+                            🧾 Ver Reporte Daños
                         </button>
                     ` : ''}
                     <button class="btn btn-outline btn-sm" onclick="verDetalleReservaProveedor('${r.id}')">
@@ -684,8 +715,217 @@ async function marcarComoEnviada(id) {
     }
 }
 
-function verDetalleReservaProveedor(id) {
-    alert('Ver detalle de reserva: ' + id);
+async function marcarComoEntregada(id) {
+    if (!confirm('¿Confirmar que la herramienta fue entregada al cliente?')) return;
+
+    try {
+        await api.patch(`/reservas/${id}/estado?nuevoEstado=ENTREGADA`);
+        mostrarAlerta('Reserva marcada como entregada', 'success');
+        cargarReservas();
+    } catch (error) {
+        console.error('Error:', error);
+        mostrarAlerta('Error al marcar como entregada', 'danger');
+    }
+}
+
+async function abrirFlujoDevolucion(reservaId) {
+    const reportarDanos = confirm('¿Deseas registrar reporte de daños en esta devolución?\nAceptar = Sí, Cancelar = No');
+
+    const payload = {
+        reportarDanos: reportarDanos
+    };
+
+    if (reportarDanos) {
+        const estadoHerramienta = prompt(
+            'Estado de la herramienta (DANADO, PERDIDO, ROBADO):',
+            'DANADO'
+        );
+
+        if (!estadoHerramienta) {
+            mostrarAlerta('Debes indicar el estado de la herramienta para reportar daños', 'warning');
+            return;
+        }
+
+        const descripcion = prompt('Descripción de daños (opcional):', '') || null;
+        const costo = prompt('Costo estimado de reparación (opcional, número):', '0');
+        const costoNumerico = costo && !isNaN(parseFloat(costo)) ? parseFloat(costo) : 0;
+
+        payload.estadoHerramienta = estadoHerramienta.toUpperCase().trim();
+        payload.descripcion = descripcion;
+        payload.costoReparacionEstimado = costoNumerico;
+    }
+
+    try {
+        await api.post(`/reservas/${reservaId}/devolucion`, payload);
+        mostrarAlerta('Devolución completada exitosamente', 'success');
+        cargarReservas();
+    } catch (error) {
+        console.error('Error:', error);
+        mostrarAlerta(`Error al completar devolución: ${error.message}`, 'danger');
+    }
+}
+
+async function verReporteDevolucionProveedor(reservaId) {
+    try {
+        const reporte = await api.get(`/reservas/${reservaId}/devolucion-reporte`);
+
+        const fotosHtml = reporte.fotos && reporte.fotos.length > 0
+            ? reporte.fotos.map(url => `
+                <a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>
+            `).join('<br>')
+            : 'Sin fotos';
+
+        const modalHTML = `
+            <div class="modal active" id="modalReporteDevolucion">
+                <div class="modal-content" style="max-width: 700px;">
+                    <div class="modal-header">
+                        <h3 class="modal-title">🧾 Reporte de Devolución</h3>
+                        <button class="modal-close" onclick="cerrarModalReporteDevolucion()">✖</button>
+                    </div>
+                    <div class="modal-body">
+                        <table class="table-details" style="width: 100%;">
+                            <tr><td><strong>Reserva:</strong></td><td>${reporte.reservaId}</td></tr>
+                            <tr><td><strong>Tipo:</strong></td><td>${reporte.tipo || '-'}</td></tr>
+                            <tr><td><strong>Estado herramienta:</strong></td><td>${reporte.estadoHerramienta || '-'}</td></tr>
+                            <tr><td><strong>Descripción:</strong></td><td>${reporte.descripcion || 'Sin descripción'}</td></tr>
+                            <tr><td><strong>Costo estimado:</strong></td><td>${formatearMoneda(reporte.costoReparacionEstimado || 0)}</td></tr>
+                            <tr><td><strong>Fecha:</strong></td><td>${reporte.fechaVerificacion ? formatearFechaHora(reporte.fechaVerificacion) : '-'}</td></tr>
+                            <tr><td><strong>Fotos:</strong></td><td>${fotosHtml}</td></tr>
+                        </table>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" onclick="cerrarModalReporteDevolucion()">Cerrar</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const modalAnterior = document.getElementById('modalReporteDevolucion');
+        if (modalAnterior) modalAnterior.remove();
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+    } catch (error) {
+        console.error('Error:', error);
+        mostrarAlerta(`No hay reporte de daños/devolución: ${error.message}`, 'warning');
+    }
+}
+
+function cerrarModalReporteDevolucion() {
+    const modal = document.getElementById('modalReporteDevolucion');
+    if (modal) modal.remove();
+}
+
+async function verDetalleReservaProveedor(id) {
+    try {
+        const reserva = await api.get(`/reservas/${id}`);
+        const herramienta = await api.get(`/herramientas/${reserva.herramientaId}`);
+
+        let detalleReserva = null;
+        try {
+            detalleReserva = await api.get(`/detalle-reserva/reserva/${id}`);
+        } catch (error) {
+            console.warn('No se encontró detalle financiero de la reserva');
+        }
+
+        let reporteDevolucion = null;
+        try {
+            reporteDevolucion = await api.get(`/reservas/${id}/devolucion-reporte`);
+        } catch (error) {
+            // Es normal que no exista en reservas sin devolución reportada
+        }
+
+        const imagen = herramienta.fotos && herramienta.fotos.length > 0
+            ? herramienta.fotos[0]
+            : 'https://via.placeholder.com/320x200?text=Sin+Imagen';
+
+        const modalHTML = `
+            <div class="modal active" id="modalDetalleReservaProveedor">
+                <div class="modal-content" style="max-width: 900px;">
+                    <div class="modal-header">
+                        <h3 class="modal-title">📋 Detalle Reserva #${reserva.numeroReserva}</h3>
+                        <button class="modal-close" onclick="cerrarModalDetalleReservaProveedor()">✖</button>
+                    </div>
+                    <div class="modal-body">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 28px;">
+                            <div>
+                                <h4 style="margin: 0 0 12px 0; padding-bottom: 10px; border-bottom: 2px solid #dee2e6;">
+                                    🛠️ Herramienta
+                                </h4>
+                                <img src="${imagen}" alt="${herramienta.nombre}" style="width: 100%; max-height: 220px; object-fit: cover; border-radius: 8px; margin-bottom: 10px;"
+                                     onerror="this.src='https://via.placeholder.com/320x200?text=Sin+Imagen'">
+                                <p style="margin: 0; font-weight: 600;">${herramienta.nombre}</p>
+                                <p style="margin: 6px 0 0 0; color: #6c757d;">${herramienta.marca || ''} ${herramienta.modelo || ''}</p>
+
+                                <h4 style="margin: 18px 0 12px 0; padding-bottom: 10px; border-bottom: 2px solid #dee2e6;">
+                                    📦 Logística
+                                </h4>
+                                <table class="table-details" style="width: 100%;">
+                                    <tr><td><strong>Estado:</strong></td><td>${obtenerBadgeEstado(reserva.estado, 'RESERVA')}</td></tr>
+                                    <tr><td><strong>Inicio:</strong></td><td>${formatearFecha(reserva.fechaInicio)}</td></tr>
+                                    <tr><td><strong>Fin:</strong></td><td>${formatearFecha(reserva.fechaFin)}</td></tr>
+                                    <tr><td><strong>Días:</strong></td><td>${reserva.diasTotales || '-'}</td></tr>
+                                    <tr><td><strong>Tracking ida:</strong></td><td>${reserva.trackingEnvioIda || '-'}</td></tr>
+                                    <tr><td><strong>Tracking vuelta:</strong></td><td>${reserva.trackingEnvioVuelta || '-'}</td></tr>
+                                    <tr><td><strong>Fecha devolución:</strong></td><td>${reserva.fechaDevolucionReal ? formatearFechaHora(reserva.fechaDevolucionReal) : '-'}</td></tr>
+                                </table>
+                            </div>
+
+                            <div>
+                                <h4 style="margin: 0 0 12px 0; padding-bottom: 10px; border-bottom: 2px solid #dee2e6;">
+                                    👤 Reserva
+                                </h4>
+                                <table class="table-details" style="width: 100%;">
+                                    <tr><td><strong>Reserva ID:</strong></td><td>${reserva.id}</td></tr>
+                                    <tr><td><strong>Cliente ID:</strong></td><td>${reserva.clienteId}</td></tr>
+                                    <tr><td><strong>Proveedor ID:</strong></td><td>${reserva.proveedorId}</td></tr>
+                                    <tr><td><strong>Creada:</strong></td><td>${reserva.createdAt ? formatearFechaHora(reserva.createdAt) : '-'}</td></tr>
+                                    <tr><td><strong>Última actualización:</strong></td><td>${reserva.updatedAt ? formatearFechaHora(reserva.updatedAt) : '-'}</td></tr>
+                                </table>
+
+                                <h4 style="margin: 18px 0 12px 0; padding-bottom: 10px; border-bottom: 2px solid #dee2e6;">
+                                    💰 Resumen financiero
+                                </h4>
+                                <table class="table-details" style="width: 100%;">
+                                    <tr><td><strong>Subtotal:</strong></td><td>${formatearMoneda(detalleReserva?.subtotalAlquiler || 0)}</td></tr>
+                                    <tr><td><strong>Seguro:</strong></td><td>${formatearMoneda(detalleReserva?.costoSeguro || 0)}</td></tr>
+                                    <tr><td><strong>Descuento:</strong></td><td>${formatearMoneda(detalleReserva?.descuento || 0)}</td></tr>
+                                    <tr><td><strong>Total pagado:</strong></td><td><strong>${formatearMoneda(detalleReserva?.totalPagado || 0)}</strong></td></tr>
+                                    <tr><td><strong>Comisión admin:</strong></td><td>${formatearMoneda(detalleReserva?.comisionAdmin || 0)}</td></tr>
+                                </table>
+
+                                ${reporteDevolucion ? `
+                                    <h4 style="margin: 18px 0 12px 0; padding-bottom: 10px; border-bottom: 2px solid #dee2e6;">
+                                        🧾 Reporte devolución/daños
+                                    </h4>
+                                    <table class="table-details" style="width: 100%;">
+                                        <tr><td><strong>Tipo:</strong></td><td>${reporteDevolucion.tipo || '-'}</td></tr>
+                                        <tr><td><strong>Estado herramienta:</strong></td><td>${reporteDevolucion.estadoHerramienta || '-'}</td></tr>
+                                        <tr><td><strong>Descripción:</strong></td><td>${reporteDevolucion.descripcion || 'Sin descripción'}</td></tr>
+                                        <tr><td><strong>Costo estimado:</strong></td><td>${formatearMoneda(reporteDevolucion.costoReparacionEstimado || 0)}</td></tr>
+                                        <tr><td><strong>Fecha reporte:</strong></td><td>${reporteDevolucion.fechaVerificacion ? formatearFechaHora(reporteDevolucion.fechaVerificacion) : '-'}</td></tr>
+                                    </table>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" onclick="cerrarModalDetalleReservaProveedor()">Cerrar</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const modalAnterior = document.getElementById('modalDetalleReservaProveedor');
+        if (modalAnterior) modalAnterior.remove();
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+    } catch (error) {
+        console.error('Error:', error);
+        mostrarAlerta(`Error al cargar detalle de reserva: ${error.message}`, 'danger');
+    }
+}
+
+function cerrarModalDetalleReservaProveedor() {
+    const modal = document.getElementById('modalDetalleReservaProveedor');
+    if (modal) modal.remove();
 }
 
 // ==================== BILLETERA ====================
@@ -972,6 +1212,18 @@ function formatearFecha(fecha) {
     });
 }
 
+function formatearFechaHora(fecha) {
+    if (!fecha) return '-';
+    const date = new Date(fecha);
+    return date.toLocaleString('es-CO', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
 function formatearMoneda(valor) {
     if (!valor) return '$0';
     return new Intl.NumberFormat('es-CO', {
@@ -986,8 +1238,11 @@ function obtenerBadgeEstado(estado, tipo) {
         'PENDIENTE_PAGO': 'badge-warning',
         'PAGADA': 'badge-info',
         'CONFIRMADA': 'badge-primary',
+        'EN_PREPARACION': 'badge-primary',
         'ENVIADA': 'badge-info',
         'ENTREGADA': 'badge-success',
+        'EN_USO': 'badge-warning',
+        'DEVUELTA': 'badge-warning',
         'COMPLETADA': 'badge-success',
         'CANCELADA_CLIENTE': 'badge-danger',
         'CANCELADA_PROVEEDOR': 'badge-danger',

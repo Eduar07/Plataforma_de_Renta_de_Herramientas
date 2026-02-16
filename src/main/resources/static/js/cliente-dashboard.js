@@ -695,6 +695,12 @@ function renderizarReservasCliente(reservas) {
                         <button class="btn btn-primary btn-sm" onclick="pagarReserva('${r.id}')">💳 Pagar Ahora</button>
                         <button class="btn btn-danger btn-sm" onclick="cancelarReservaCliente('${r.id}')">✖️ Cancelar</button>
                     ` : ''}
+                    ${['ENTREGADA', 'EN_USO'].includes(r.estado) ? `
+                        <button class="btn btn-primary btn-sm" onclick="solicitarDevolucionCliente('${r.id}')">↩️ Solicitar Devolución</button>
+                    ` : ''}
+                    ${['PAGADA', 'CONFIRMADA', 'EN_PREPARACION'].includes(r.estado) ? `
+                        <button class="btn btn-warning btn-sm" onclick="cancelarAlProveedorCliente('${r.id}')">⚠️ Cancelar al Proveedor</button>
+                    ` : ''}
                     ${r.estado === 'COMPLETADA' ? `
                         <button class="btn btn-sm" style="background-color: #ffc107; color: #000;">⭐ Calificar</button>
                     ` : ''}
@@ -858,6 +864,65 @@ async function cancelarReservaCliente(id) {
     } catch (error) {
         console.error('Error:', error);
         mostrarAlerta('Error al cancelar reserva', 'danger');
+    }
+}
+
+async function solicitarDevolucionCliente(id) {
+    const motivo = prompt('Motivo de la devolución (puede ser devolución anticipada):');
+    if (!motivo) return;
+
+    const reportarDanos = confirm('¿Deseas reportar daños de la herramienta?');
+    const payload = {
+        cancelarAlProveedor: false,
+        motivo: motivo,
+        reportarDanos: reportarDanos
+    };
+
+    if (reportarDanos) {
+        const estadoHerramienta = prompt(
+            'Estado de la herramienta (PERFECTO, BUENO, DANADO, PERDIDO, ROBADO):',
+            'BUENO'
+        );
+        if (!estadoHerramienta) {
+            mostrarAlerta('Debes indicar el estado de la herramienta', 'warning');
+            return;
+        }
+        const descripcion = prompt('Descripción de daños (opcional):', '') || null;
+        const costo = prompt('Costo estimado de reparación (opcional, número):', '0');
+        const costoNumerico = costo && !isNaN(parseFloat(costo)) ? parseFloat(costo) : 0;
+
+        payload.estadoHerramienta = estadoHerramienta.toUpperCase().trim();
+        payload.descripcion = descripcion;
+        payload.costoReparacionEstimado = costoNumerico;
+    }
+
+    try {
+        await api.post(`/reservas/${id}/devolucion-cliente`, payload);
+        mostrarAlerta('Solicitud de devolución enviada al proveedor', 'success');
+        cargarMisReservas();
+    } catch (error) {
+        console.error('Error:', error);
+        mostrarAlerta(`Error al solicitar devolución: ${error.message}`, 'danger');
+    }
+}
+
+async function cancelarAlProveedorCliente(id) {
+    const motivo = prompt('Motivo de cancelación al proveedor:');
+    if (!motivo) return;
+
+    if (!confirm('Esta acción solicitará cancelar la reserva al proveedor. ¿Continuar?')) return;
+
+    try {
+        await api.post(`/reservas/${id}/devolucion-cliente`, {
+            cancelarAlProveedor: true,
+            motivo: motivo,
+            reportarDanos: false
+        });
+        mostrarAlerta('Cancelación solicitada/procesada exitosamente', 'success');
+        cargarMisReservas();
+    } catch (error) {
+        console.error('Error:', error);
+        mostrarAlerta(`Error al cancelar al proveedor: ${error.message}`, 'danger');
     }
 }
 

@@ -135,3 +135,10 @@ INSERT INTO cupones (id, codigo, descripcion, tipo_descuento, valor, monto_minim
 
 -- Contraseña para todos los usuarios de prueba: "password123"
 -- Hash bcrypt: $2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy
+
+UPDATE usuarios SET password_hash = '$2a$10$WD7y6OkvHiGVI.4u5.rGHOhdqXYXrQy1/CtYouEs8SgkHoE2t7x9m' WHERE email = 'proveedor1@example.com';
+UPDATE usuarios SET password_hash = '$2a$10$WD7y6OkvHiGVI.4u5.rGHOhdqXYXrQy1/CtYouEs8SgkHoE2t7x9m' WHERE email = 'proveedor2@example.com';
+UPDATE usuarios SET password_hash = '$2a$10$WD7y6OkvHiGVI.4u5.rGHOhdqXYXrQy1/CtYouEs8SgkHoE2t7x9m' WHERE email = 'cliente1@example.com';
+UPDATE usuarios SET password_hash = '$2a$10$WD7y6OkvHiGVI.4u5.rGHOhdqXYXrQy1/CtYouEs8SgkHoE2t7x9m' WHERE email = 'cliente2@example.com';
+UPDATE usuarios SET password_hash = '$2a$10$WD7y6OkvHiGVI.4u5.rGHOhdqXYXrQy1/CtYouEs8SgkHoE2t7x9m' WHERE email = 'admin@rentaherramientas.com';
+UPDATE usuarios SET password_hash = '$2a$10$WD7y6OkvHiGVI.4u5.rGHOhdqXYXrQy1/CtYouEs8SgkHoE2t7x9m' WHERE email = 'soporte@rentaherramientas.com';
