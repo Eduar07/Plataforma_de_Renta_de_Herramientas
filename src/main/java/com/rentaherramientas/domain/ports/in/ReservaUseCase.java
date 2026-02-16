@@ -1,7 +1,9 @@
 package com.rentaherramientas.domain.ports.in;
 
 import com.rentaherramientas.domain.model.Reserva;
+import com.rentaherramientas.domain.model.VerificacionDevolucion;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -28,6 +30,30 @@ public interface ReservaUseCase {
     List<Reserva> listarReservasPorEstado(String estado);
     
     Reserva cambiarEstado(String id, String nuevoEstado);
+
+    Reserva completarDevolucion(
+            String reservaId,
+            String proveedorId,
+            Boolean reportarDanos,
+            String estadoHerramienta,
+            String descripcion,
+            List<String> fotos,
+            BigDecimal costoReparacionEstimado
+    );
+
+    Reserva solicitarDevolucionCliente(
+            String reservaId,
+            String clienteId,
+            Boolean cancelarAlProveedor,
+            String motivo,
+            Boolean reportarDanos,
+            String estadoHerramienta,
+            String descripcion,
+            List<String> fotos,
+            BigDecimal costoReparacionEstimado
+    );
+
+    Optional<VerificacionDevolucion> obtenerVerificacionDevolucion(String reservaId);
     
     Reserva cancelarReserva(String id, String motivo, String canceladoPor);
     

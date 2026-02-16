@@ -69,11 +69,13 @@ public class BeanConfiguration {
     public ReservaUseCase reservaUseCase(
             ReservaRepositoryPort reservaRepositoryPort,
             HerramientaUseCase herramientaUseCase,
-            DetalleReservaUseCase detalleReservaUseCase) {
+            DetalleReservaUseCase detalleReservaUseCase,
+            VerificacionDevolucionRepositoryPort verificacionDevolucionRepositoryPort) {
         return new ReservaService(
                 reservaRepositoryPort,
                 herramientaUseCase,
-                detalleReservaUseCase
+                detalleReservaUseCase,
+                verificacionDevolucionRepositoryPort
         );
     }
 
